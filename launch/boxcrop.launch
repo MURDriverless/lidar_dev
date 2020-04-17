@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+  <!-- Ground segmentation -->
+  <node name="boxcrop" pkg="lidar_dev" type="boxcrop_node" output="screen">
+    <remap from="input" to="os1_cloud_node/points"/>
+  </node>
+
+</launch>

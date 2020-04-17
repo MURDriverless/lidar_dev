@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+  <!-- Ground segmentation -->
+  <node name="cluster" pkg="lidar_dev" type="cluster_node" output="screen">
+    <remap from="input" to="/ground_segmentation/obstacle_cloud"/>
+  </node>
+
+</launch>

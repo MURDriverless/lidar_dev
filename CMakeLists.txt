@@ -206,8 +206,11 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_executable(segmentation src/segmentation.cpp)
-target_link_libraries(segmentation ${catkin_LIBRARIES})
+add_executable(segmentation_node src/segmentation.cpp)
+target_link_libraries(segmentation_node ${catkin_LIBRARIES})
 
-add_executable(boxcrop src/boxcrop.cpp)
-target_link_libraries(boxcrop ${catkin_LIBRARIES})
+add_executable(boxcrop_node src/boxcrop.cpp)
+target_link_libraries(boxcrop_node ${catkin_LIBRARIES})
+
+add_executable(cluster_node src/cluster.cpp)
+target_link_libraries(cluster_node ${catkin_LIBRARIES})
