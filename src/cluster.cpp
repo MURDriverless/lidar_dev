@@ -25,21 +25,20 @@ Node:process the /ground_segmentation/obstacle_cloud output from the segmentatio
 
 #include <pcl/filters/conditional_removal.h>
 
-
 ros::Publisher pub;
 
 // perform euclidean clustering
 void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &cloud_msg)
 {
-	// container for original & filtered data
-	pcl::PCLPointCloud2 *cloud = new pcl::PCLPointCloud2;
-	pcl::PCLPointCloud2ConstPtr cloudPtr(cloud);
+    // container for original & filtered data
+    pcl::PCLPointCloud2 *cloud = new pcl::PCLPointCloud2;
+    pcl::PCLPointCloud2ConstPtr cloudPtr(cloud);
 
-	// convert given message into PCL data type
-	pcl_conversions::toPCL(*cloud_msg, *cloud);
+    // convert given message into PCL data type
+    pcl_conversions::toPCL(*cloud_msg, *cloud);
 
     // convert from PointCloud2 to PointCloud
-    pcl::PointCloud<pcl::PointXYZ>::Ptr input (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr input(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromPCLPointCloud2(*cloud, *input);
 
     ROS_INFO("There are %ld points in input point cloud \n", input->size());
@@ -71,54 +70,23 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &cloud_msg)
 
     std::vector<pcl::PointIndices> cluster_indices;
     pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-    ec.setClusterTolerance(0.08);       // 8cm (affects resulting cluster size)
-    ec.setMinClusterSize(10);          // minimum number of points 
-    ec.setMaxClusterSize(250);          // maximum number of points
+    ec.setClusterTolerance(0.08); // 8cm (affects resulting cluster size)
+    ec.setMinClusterSize(10);     // minimum number of points
+    ec.setMaxClusterSize(250);    // maximum number of points
     ec.setSearchMethod(tree);
     ec.setInputCloud(cloud_filtered);
     ec.extract(cluster_indices);
 
     int n = 0;
-    pcl::PointCloud<pcl::PointXYZ>::Ptr clustered_cloud (new pcl::PointCloud<pcl::PointXYZ>);
-    sensor_msgs::PointCloud2::Ptr clusters (new sensor_msgs::PointCloud2);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr clustered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
-    // // create a filtering object for extracting indices
-    // pcl::ExtractIndices<pcl::PointXYZ> extract;
-
-    // for (size_t i = 0; i < cluster_indices.size(); ++i )
-    // {
-    //     pcl::PointIndices::Ptr indices(new pcl::PointIndices);
-    //     *indices = cluster_indices[i];
-
-    //     pcl::PointCloud<pcl::PointXYZ>::Ptr object_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-
-    //     // fill in the object_cloud using indices
-    //     extract.setInputCloud(input);
-    //     extract.setIndices(indices);
-    //     extract.setNegative(false);
-    //     extract.filter(*object_cloud);
-
-    //     // publish bounding box around object
-    //     visualization_msgs::Marker object_marker;
-    //     object_marker.ns = "objects";
-    //     object_marker.id = i;
-    //     object_marker.header.frame_id = "base_link";
-    //     object_marker.type = visualization_msgs::Marker::CUBE;
-    //     GetAxisAlignedBoundingBox(object_cloud, &object_marker.pose,
-    //                                 &object_marker.scale);
-    //     object_marker.color.g = 1;
-    //     object_marker.color.a = 0.3;
-    // }
-
-    // --- outer loop goes through all the clusters we found
+    // outer loop goes through all the clusters we found
     for (auto it = cluster_indices.begin(); it != cluster_indices.end(); ++it)
     {
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZ>);
 
-        for (auto pit = it->indices.begin(); pit != it->indices.end(); ++pit)
-        {
-            cloud_cluster->points.push_back(input->points[*pit]);
-        }
+        for (const int &index : it->indices)
+            cloud_cluster->points.push_back(cloud_filtered->points[index]);
 
         cloud_cluster->width = cloud_cluster->points.size();
         cloud_cluster->height = 1;
@@ -132,29 +100,29 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &cloud_msg)
     }
 
     // set additional header info and convert to ROS data type
-	sensor_msgs::PointCloud2 output;
+    sensor_msgs::PointCloud2 output;
     pcl::toROSMsg(*clustered_cloud, output);
     output.header.frame_id = "/os1_lidar";
     output.header.stamp = ros::Time::now();
 
     ROS_INFO("About to publish cluster output \n");
 
-	// publish the output data
-	pub.publish(output);
+    // publish the output data
+    pub.publish(output);
 }
 
 int main(int argc, char **argv)
 {
-	// Initialize ROS
-	ros::init(argc, argv, "pcl_boxcrop");
-	ros::NodeHandle nh;
+    // Initialize ROS
+    ros::init(argc, argv, "pcl_boxcrop");
+    ros::NodeHandle nh;
 
-	// Create a ROS subscriber for the input point cloud
-	ros::Subscriber sub = nh.subscribe("input", 1, cloud_cluster_cb);
+    // Create a ROS subscriber for the input point cloud
+    ros::Subscriber sub = nh.subscribe("input", 1, cloud_cluster_cb);
 
-	// Create a ROS publisher for the output point cloud
-	pub = nh.advertise<sensor_msgs::PointCloud2>("cluster_output", 1);
+    // Create a ROS publisher for the output point cloud
+    pub = nh.advertise<sensor_msgs::PointCloud2>("cluster_output", 1);
 
-	// Spin
-	ros::spin();
+    // Spin
+    ros::spin();
 }
