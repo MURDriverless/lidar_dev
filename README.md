@@ -30,3 +30,12 @@ https://github.com/catkin/catkin_simple.git
 https://github.com/ethz-asl/glog_catkin.git
 ```
 
+So to set this up, go to the catkin workspace. For example `~/Document/catkin_ws`. It is also assumed that you have the full `ros-melodic-desktop-full` installed.
+
+```
+cd ~/Document/catkin_ws/src
+git clone https://github.com/MURDriverless/lidar_dev
+git clone https://github.com/lorenwel/linefit_ground_segmentation
+git clone https://github.com/catkin/catkin_simple.git
+git clone https://github.com/ethz-asl/glog_catkin.git
+```
