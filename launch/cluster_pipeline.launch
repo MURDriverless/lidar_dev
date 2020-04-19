@@ -17,6 +17,6 @@
 
     <!-- Perform clustering on segmentation obstacle output -->
     <node pkg="lidar_dev" type="cluster_node" name="cluster" output="screen">
-        <remap from="input" to="ground_segmentation/obstacle_cloud"/>
+        <!-- <remap from="input" to="ground_segmentation/obstacle_cloud"/> -->
     </node>
 </launch>

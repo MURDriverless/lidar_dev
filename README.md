@@ -46,8 +46,12 @@ Also install the following if you do not have `glog-dev`.
 sudo apt install libgoogle-glog-dev
 ```
 
-## Config changes
+## Config Changes
 
 For indoor testing with `2020-04-13-15-31-43.bag` change the `sensor_height` to `0.45` in the `segmentation_params.yaml`.
 
-The config file is located at `catkin_ws/src/linefit_ground_segmentation/linefit_ground_segmentation_ros/launch/segmentation_params.yaml`
+The config file is located at 
+
+```
+catkin_ws/src/linefit_ground_segmentation/linefit_ground_segmentation_ros/launch/segmentation_params.yaml
+```
