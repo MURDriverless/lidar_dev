@@ -17,6 +17,7 @@
 
     <!-- Perform clustering on segmentation obstacle output -->
     <node pkg="lidar_dev" type="cluster_node" name="cluster" output="screen">
+        <rosparam command="load" file="$(find lidar_dev)/launch/cluster_params.yaml"/>
         <!-- <remap from="input" to="ground_segmentation/obstacle_cloud"/> -->
     </node>
 </launch>

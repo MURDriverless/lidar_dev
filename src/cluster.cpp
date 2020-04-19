@@ -1,39 +1,11 @@
-/*  
-Node:process the /ground_segmentation/obstacle_cloud output from the segmentation node
- */
+// process the /ground_segmentation/obstacle_cloud output from the segmentation node
 
-#include <ros/ros.h>
-#include <visualization_msgs/Marker.h>
-#include <visualization_msgs/MarkerArray.h>
-
-#include <sensor_msgs/PointCloud2.h>
-#include <message_filters/subscriber.h>
-#include <message_filters/time_synchronizer.h>
-
-// PCL specific includes
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl/conversions.h>
-#include <pcl_ros/transforms.h>
-
-#include <pcl/ModelCoefficients.h>
-#include <pcl/point_types.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/filters/extract_indices.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/features/normal_3d.h>
-#include <pcl/kdtree/kdtree.h>
-#include <pcl/sample_consensus/method_types.h>
-#include <pcl/sample_consensus/model_types.h>
-#include <pcl/segmentation/sac_segmentation.h>
-#include <pcl/segmentation/extract_clusters.h>
-
-#include <pcl/filters/conditional_removal.h>
-#include <pcl/filters/filter.h>
-
-void set_marker_properties(visualization_msgs::Marker *marker, pcl::PointXYZ centre, int n);
+#include "cluster.h"
 
 ros::Publisher pub;
 ros::Publisher markers_pub; // publisher for cylinder markers
+
+ClusterParams params;
 
 // perform euclidean clustering
 void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, const sensor_msgs::PointCloud2ConstPtr &ground_msg)
@@ -85,9 +57,9 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
 
     std::vector<pcl::PointIndices> cluster_indices;
     pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-    ec.setClusterTolerance(0.08); // 8cm (affects resulting cluster size)
-    ec.setMinClusterSize(10);     // minimum number of points
-    ec.setMaxClusterSize(250);    // maximum number of points
+    ec.setClusterTolerance(params.cluster_tol);     // 8cm (affects resulting cluster size)
+    ec.setMinClusterSize(params.cluster_min);       // minimum number of points
+    ec.setMaxClusterSize(params.cluster_max);       // maximum number of points
     ec.setSearchMethod(tree);
     ec.setInputCloud(cloud_filtered);
     ec.extract(cluster_indices);
@@ -128,7 +100,7 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
         Eigen::Vector3f cylinderPosition;
         cylinderPosition << -centre.x, -centre.y, 0;
 
-        float radius = 0.5;
+        double radius = params.reconst_radius;
         float cylinderScalar = -(radius * radius) + centre.x * centre.x + centre.y * centre.y;
 
         pcl::TfQuadraticXYZComparison<pcl::PointXYZ>::Ptr cyl_comp 
@@ -184,15 +156,15 @@ void set_marker_properties(visualization_msgs::Marker *marker, pcl::PointXYZ cen
     marker->pose.orientation.z = 0.0;
     marker->pose.orientation.w = 1.0;
 
-    marker->scale.x = 0.35;
-    marker->scale.y = 0.35;
-    marker->scale.z = 0.7;
+    marker->scale.x = params.marker_sx;
+    marker->scale.y = params.marker_sy;
+    marker->scale.z = params.marker_sz;
 
     // alpha and RGB settings
-    marker->color.a = 0.5; // set the alpha value (0 = transparent, 1 = solid)
-    marker->color.r = 0.0;
-    marker->color.g = 1.0;
-    marker->color.b = 0.0;
+    marker->color.a = params.marker_alpha;
+    marker->color.r = params.marker_r;
+    marker->color.g = params.marker_g;
+    marker->color.b = params.marker_b;
 }
 
 int main(int argc, char **argv)
@@ -201,13 +173,26 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "pcl_boxcrop");
     ros::NodeHandle nh;
 
+    // Parse parameters
+    nh.param("/cluster/cluster_tol", params.cluster_tol, params.cluster_tol);
+    nh.param("/cluster/cluster_min", params.cluster_min, params.cluster_min);
+    nh.param("/cluster/cluster_max", params.cluster_max, params.cluster_max);
+    nh.param("/cluster/reconst_radius", params.reconst_radius, params.reconst_radius);
+    nh.param("/cluster/marker_sx", params.marker_sx, params.marker_sx);
+    nh.param("/cluster/marker_sy", params.marker_sy, params.marker_sy);
+    nh.param("/cluster/marker_sz", params.marker_sz, params.marker_sz);
+    nh.param("/cluster/marker_alpha", params.marker_alpha, params.marker_alpha);
+    nh.param("/cluster/marker_r", params.marker_r, params.marker_r);
+    nh.param("/cluster/marker_g", params.marker_g, params.marker_g);
+    nh.param("/cluster/marker_b", params.marker_b, params.marker_b);
+
     // Create a ROS subscriber for ground plane and potential obstacles
     message_filters::Subscriber<sensor_msgs::PointCloud2> ground_sub(nh, "ground_segmentation/obstacle_cloud", 1);
     message_filters::Subscriber<sensor_msgs::PointCloud2> obstacles_sub(nh, "ground_segmentation/ground_cloud", 1);
 
+    // Pass both subscribed message into the same callback
     message_filters::TimeSynchronizer<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> sync(ground_sub, obstacles_sub, 10);
     sync.registerCallback(boost::bind(&cloud_cluster_cb, _1, _2));
-    // ros::Subscriber sub = nh.subscribe("input", 1, cloud_cluster_cb);
 
     // Create a ROS publisher for the output point cloud
     pub = nh.advertise<sensor_msgs::PointCloud2>("cluster_output", 1);
