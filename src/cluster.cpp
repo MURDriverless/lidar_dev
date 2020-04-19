@@ -28,6 +28,7 @@ Node:process the /ground_segmentation/obstacle_cloud output from the segmentatio
 #include <pcl/segmentation/extract_clusters.h>
 
 #include <pcl/filters/conditional_removal.h>
+#include <pcl/filters/filter.h>
 
 void set_marker_properties(visualization_msgs::Marker *marker, pcl::PointXYZ centre, int n);
 
@@ -37,16 +38,23 @@ ros::Publisher markers_pub; // publisher for cylinder markers
 // perform euclidean clustering
 void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, const sensor_msgs::PointCloud2ConstPtr &ground_msg)
 {
+    // container for ground data
+    pcl::PCLPointCloud2 *ground = new pcl::PCLPointCloud2;
+    pcl::PCLPointCloud2ConstPtr groundPtr(ground);
+    
     // container for original & filtered data
     pcl::PCLPointCloud2 *cloud = new pcl::PCLPointCloud2;
     pcl::PCLPointCloud2ConstPtr cloudPtr(cloud);
 
     // convert given message into PCL data type
     pcl_conversions::toPCL(*obstacles_msg, *cloud);
+    pcl_conversions::toPCL(*ground_msg, *ground);
 
     // convert from PointCloud2 to PointCloud
     pcl::PointCloud<pcl::PointXYZ>::Ptr input(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr input_ground (new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromPCLPointCloud2(*cloud, *input);
+    pcl::fromPCLPointCloud2(*ground, *input_ground);
 
     ROS_INFO("There are %ld points in input point cloud \n", input->size());
 
@@ -104,15 +112,40 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
         cloud_cluster->is_dense = true;
         
         // extract centroid of cluster
-        pcl::PointXYZ centre_point;
-        pcl::computeCentroid(*cloud_cluster, centre_point);
+        pcl::PointXYZ centre;
+        pcl::computeCentroid(*cloud_cluster, centre);
 
         // set marker properties
-        set_marker_properties(&marker_array_msg.markers[n], centre_point, n);
+        set_marker_properties(&marker_array_msg.markers[n], centre, n);
 
-        // join each cloud cluster into one combined cluster
-        // (mainly for visualisation purpose)
-        *clustered_cloud += *cloud_cluster;
+        // cylindrical reconstruction from ground points
+        pcl::ConditionAnd<pcl::PointXYZ>::Ptr cyl_cond (new pcl::ConditionAnd<pcl::PointXYZ> ());
+
+        Eigen::Matrix3f cylinderMatrix;
+        cylinderMatrix(0,0) = 1.0;
+        cylinderMatrix(1,1) = 1.0;
+
+        Eigen::Vector3f cylinderPosition;
+        cylinderPosition << -centre.x, -centre.y, 0;
+
+        float radius = 0.5;
+        float cylinderScalar = -(radius * radius) + centre.x * centre.x + centre.y * centre.y;
+
+        pcl::TfQuadraticXYZComparison<pcl::PointXYZ>::Ptr cyl_comp 
+            (new pcl::TfQuadraticXYZComparison<pcl::PointXYZ> 
+            (pcl::ComparisonOps::LE, cylinderMatrix, cylinderPosition, cylinderScalar));
+        cyl_cond->addComparison(cyl_comp);
+
+        pcl::PointCloud<pcl::PointXYZ> recovered;
+
+        // build and apply filter
+        condrem.setCondition(cyl_cond);
+        condrem.setInputCloud(input_ground);
+        condrem.setKeepOrganized(false);
+        condrem.filter(recovered);
+
+        // join each cloud cluster into one combined cluster (visualisation)
+        *clustered_cloud += *cloud_cluster + recovered;
 
         // print info about cluster size
         std::cout << n << " PointCloud representing the Cluster: " << cloud_cluster->points.size() << " data points." << std::endl;
@@ -174,7 +207,6 @@ int main(int argc, char **argv)
 
     message_filters::TimeSynchronizer<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> sync(ground_sub, obstacles_sub, 10);
     sync.registerCallback(boost::bind(&cloud_cluster_cb, _1, _2));
-
     // ros::Subscriber sub = nh.subscribe("input", 1, cloud_cluster_cb);
 
     // Create a ROS publisher for the output point cloud
