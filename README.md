@@ -39,3 +39,9 @@ git clone https://github.com/lorenwel/linefit_ground_segmentation
 git clone https://github.com/catkin/catkin_simple.git
 git clone https://github.com/ethz-asl/glog_catkin.git
 ```
+
+Also install the following if you do not have `glog-dev`.
+
+```
+sudo apt install libgoogle-glog-dev
+```
