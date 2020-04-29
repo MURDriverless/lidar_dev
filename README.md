@@ -8,7 +8,7 @@ Currently, the project requires ROS and PCL to run.
 
 The current rosbag file has the LiDAR mounted at about 0.45m height.
 
-Use the `2020-04-13-15-31-43.bag` available on the MUR Driverless sharepoint to playback on a loop.
+Use the `2020-04-13-15-31-43.bag` available on the MUR Driverless sharepoint to playback on a loop. Note that the rosbag file was recorded using `lidar_mode=1024x10` which corresponds to 1024 horizontal resolution and 10 Hz.
 
 ```
 rosbag play -l 2020-04-13-15-31-43.bag
