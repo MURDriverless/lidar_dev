@@ -7,6 +7,19 @@ ros::Publisher markers_pub; // publisher for cylinder markers
 
 ClusterParams params;
 
+// compute the number of expected points for cone object
+int num_expected_points(const pcl::PointXYZ &centre) {
+    double d = sqrt(centre.x * centre.x + centre.y * centre.y + centre.z * centre.z);
+    double hc = 0.31;           // cone height
+    double wc = 0.30;           // cone width
+    double rv = M_PI / 8 / 64;  // angular resolution vertical
+    double rh = M_PI / 1024;    // angular resolution horizontal
+
+    // compute and return number of expected points
+    double E = 0.5 * hc / (2 * d * tan(rv / 2)) * wc / (2 * d * tan(rh / 2));
+    return (int)E;
+}
+
 // perform euclidean clustering
 void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, const sensor_msgs::PointCloud2ConstPtr &ground_msg)
 {
@@ -82,10 +95,19 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
         cloud_cluster->width = cloud_cluster->points.size();
         cloud_cluster->height = 1;
         cloud_cluster->is_dense = true;
-        
+
         // extract centroid of cluster
         pcl::PointXYZ centre;
         pcl::computeCentroid(*cloud_cluster, centre);
+
+        // check if we have the right number of points
+        double d = sqrt(centre.x * centre.x + centre.y * centre.y + centre.z * centre.z);
+        std::cout << "num_expected_points = " << 0.25 * num_expected_points(centre) << std::endl;
+        std::cout << "num actual points   = " << cloud_cluster->size() << std::endl;
+        std::cout << "distance to cone    = " << d << std::endl;
+        if (cloud_cluster->size() <= 0.25 * num_expected_points(centre)) {
+            continue;
+        }
 
         // set marker properties
         set_marker_properties(&marker_array_msg.markers[n], centre, n);
@@ -120,7 +142,7 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
         *clustered_cloud += *cloud_cluster + recovered;
 
         // print info about cluster size
-        std::cout << n << " PointCloud representing the Cluster: " << cloud_cluster->points.size() << " data points." << std::endl;
+        // std::cout << n << " PointCloud representing the Cluster: " << cloud_cluster->points.size() << " data points." << std::endl;
         n++;
     }
 

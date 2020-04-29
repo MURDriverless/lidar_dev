@@ -1,12 +1,12 @@
 cluster_tol: 0.08       # cluster tolerance which affect resulting cluster size
 cluster_min: 10         # cluster minimum number of points
 cluster_max: 250        # cluster maximum nubmer of points
-reconst_radius: 0.3     # radius of the cluster reconstruction
+reconst_radius: 0.17    # radius of the cluster reconstruction
 
-marker_sx: 0.35         # marker scale x
-marker_sy: 0.35         # marker scale y
+marker_sx: 0.30         # marker scale x
+marker_sy: 0.30         # marker scale y
 marker_sz: 0.7          # marker scale z
-marker_alpha: 0.5       # alpha value of marker
-marker_r: 1.0           # red
-marker_g: 0.0           # green
+marker_alpha: 0.4       # alpha value of marker
+marker_r: 0.0           # red
+marker_g: 1.0           # green
 marker_b: 0.0           # blue

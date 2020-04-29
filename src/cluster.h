@@ -70,5 +70,6 @@ struct ClusterParams {
 
 void set_marker_properties(visualization_msgs::Marker *marker, pcl::PointXYZ centre, int n);
 void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, const sensor_msgs::PointCloud2ConstPtr &ground_msg);
+int num_expected_points(const pcl::PointXYZ &centre);
 
 #endif // CLUSTER_H_
