@@ -10,10 +10,10 @@ ClusterParams params;
 // compute the number of expected points for cone object
 int num_expected_points(const pcl::PointXYZ &centre) {
     double d = sqrt(centre.x * centre.x + centre.y * centre.y + centre.z * centre.z);
-    double hc = 0.31;           // cone height
-    double wc = 0.30;           // cone width
-    double rv = M_PI / 8 / 64;  // angular resolution vertical
-    double rh = M_PI / 1024;    // angular resolution horizontal
+    static double hc = 0.31;               // cone height
+    static double wc = 0.30;               // cone width
+    static double rv = 2 * M_PI / 8 / 64;  // angular resolution vertical
+    static double rh = 2 * M_PI / 1024;    // angular resolution horizontal
 
     // compute and return number of expected points
     double E = 0.5 * hc / (2 * d * tan(rv / 2)) * wc / (2 * d * tan(rh / 2));
@@ -102,10 +102,10 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
 
         // check if we have the right number of points
         double d = sqrt(centre.x * centre.x + centre.y * centre.y + centre.z * centre.z);
-        std::cout << "num_expected_points = " << 0.25 * num_expected_points(centre) << std::endl;
+        std::cout << "num_expected_points = " << num_expected_points(centre) << std::endl;
         std::cout << "num actual points   = " << cloud_cluster->size() << std::endl;
         std::cout << "distance to cone    = " << d << std::endl;
-        if (cloud_cluster->size() <= 0.25 * num_expected_points(centre)) {
+        if (cloud_cluster->size() <= num_expected_points(centre)) {
             continue;
         }
 
