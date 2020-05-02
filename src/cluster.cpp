@@ -98,16 +98,18 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
         pcl::PointXYZ centre;
         pcl::computeCentroid(*cloud_cluster, centre);
 
-        // check if we have the right number of points
-        double d = sqrt(centre.x * centre.x + centre.y * centre.y + centre.z * centre.z);
-        std::cout << "num_expected_points = " << num_expected_points(centre) << std::endl;
-        std::cout << "num actual points   = " << cloud_cluster->size() << std::endl;
-        std::cout << "distance to cone    = " << d << std::endl;
 
         // skip processing step if there is insufficient points
-        if (cloud_cluster->size() < 0.75 * num_expected_points(centre)) {
+        int expected = num_expected_points(centre);
+        if (cloud_cluster->size() < 0.60 * expected || cloud_cluster->size() > expected) {
             continue;
         }
+
+        // check if we have the right number of points
+        double d = sqrt(centre.x * centre.x + centre.y * centre.y + centre.z * centre.z);
+        std::cout << "num_expected_points = " << 0.60 * num_expected_points(centre) << std::endl;
+        std::cout << "num actual points   = " << cloud_cluster->size() << std::endl;
+        std::cout << "distance to cone    = " << d << std::endl;
 
         // add to marker points
         marker_points.push_back(centre);
@@ -149,13 +151,16 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
     visualization_msgs::MarkerArray marker_array_msg;
     marker_array_msg.markers.resize(marker_points.size());
     for (int i = 0; i < marker_points.size(); ++i) {
-        set_marker_properties(&marker_array_msg.markers[i], marker_points[i], i);
+        set_marker_properties(&marker_array_msg.markers[i], marker_points[i], i, ground->header.frame_id);
     }
+
+    std::cout << "NUM OF MARKERS = " << marker_points.size() << std::endl;
+    
 
     // set additional header info and convert to ROS data type
     sensor_msgs::PointCloud2 output;
     pcl::toROSMsg(*clustered_cloud, output);
-    output.header.frame_id = "/os1_lidar";
+    output.header.frame_id = ground->header.frame_id;
     output.header.stamp = ros::Time::now();
 
     ROS_INFO("About to publish cluster output \n");
@@ -166,9 +171,13 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
 }
 
 // function to set the marker properties
-void set_marker_properties(visualization_msgs::Marker *marker, pcl::PointXYZ centre, int n)
+void set_marker_properties(
+    visualization_msgs::Marker *marker, 
+    pcl::PointXYZ centre, 
+    int n, 
+    std::string frame_id)
 {
-    marker->header.frame_id = "/os1_lidar";
+    marker->header.frame_id = frame_id;
     marker->header.stamp = ros::Time();
     marker->ns = "my_namespace";
     marker->id = n;
@@ -193,6 +202,8 @@ void set_marker_properties(visualization_msgs::Marker *marker, pcl::PointXYZ cen
     marker->color.r = params.marker_r;
     marker->color.g = params.marker_g;
     marker->color.b = params.marker_b;
+
+    marker->lifetime = ros::Duration(0.1);
 }
 
 int main(int argc, char **argv)
