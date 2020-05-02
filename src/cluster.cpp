@@ -23,6 +23,10 @@ int num_expected_points(const pcl::PointXYZ &centre) {
 // perform euclidean clustering
 void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, const sensor_msgs::PointCloud2ConstPtr &ground_msg)
 {
+    // time callback run time as performance measure
+    ros::WallTime start_, end_;
+    start_ = ros::WallTime::now();
+    
     // container for ground data
     pcl::PCLPointCloud2 *ground = new pcl::PCLPointCloud2;
     pcl::PCLPointCloud2ConstPtr groundPtr(ground);
@@ -98,18 +102,20 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
         pcl::PointXYZ centre;
         pcl::computeCentroid(*cloud_cluster, centre);
 
+        double d = sqrt(centre.x * centre.x + centre.y * centre.y + centre.z * centre.z);
+        std::cout << "[potential] num_expected_points = " << 0.60 * num_expected_points(centre) << std::endl;
+        std::cout << "[potential] num actual points   = " << cloud_cluster->size() << std::endl;
+        std::cout << "[potential] distance to cone    = " << d << std::endl;
 
         // skip processing step if there is insufficient points
         int expected = num_expected_points(centre);
-        if (cloud_cluster->size() < 0.60 * expected || cloud_cluster->size() > expected) {
+        if (cloud_cluster->size() < 0.60 * expected) {
             continue;
         }
 
-        // check if we have the right number of points
-        double d = sqrt(centre.x * centre.x + centre.y * centre.y + centre.z * centre.z);
-        std::cout << "num_expected_points = " << 0.60 * num_expected_points(centre) << std::endl;
-        std::cout << "num actual points   = " << cloud_cluster->size() << std::endl;
-        std::cout << "distance to cone    = " << d << std::endl;
+        std::cout << "[confirmed] num_expected_points = " << 0.60 * num_expected_points(centre) << std::endl;
+        std::cout << "[confirmed] num actual points   = " << cloud_cluster->size() << std::endl;
+        std::cout << "[confirmed] distance to cone    = " << d << std::endl;
 
         // add to marker points
         marker_points.push_back(centre);
@@ -168,6 +174,11 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
     // publish the output data
     pub.publish(output);
     markers_pub.publish(marker_array_msg);
+
+    // measure and print runtime performance
+    end_ = ros::WallTime::now();
+    double execution_time = (end_ - start_).toNSec() * 1e-6;
+    ROS_INFO_STREAM("Exectution time (ms): " << execution_time);
 }
 
 // function to set the marker properties
