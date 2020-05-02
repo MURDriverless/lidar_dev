@@ -77,12 +77,10 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
     ec.setInputCloud(cloud_filtered);
     ec.extract(cluster_indices);
 
-    int n = 0;
     pcl::PointCloud<pcl::PointXYZ>::Ptr clustered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
-    // setup and resize the cylinder marker array
-    visualization_msgs::MarkerArray marker_array_msg;
-    marker_array_msg.markers.resize(cluster_indices.size());
+    // vector to store marker points
+    std::vector<pcl::PointXYZ> marker_points;
 
     // outer loop goes through all the clusters we found
     for (auto it = cluster_indices.begin(); it != cluster_indices.end(); ++it)
@@ -105,12 +103,14 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
         std::cout << "num_expected_points = " << num_expected_points(centre) << std::endl;
         std::cout << "num actual points   = " << cloud_cluster->size() << std::endl;
         std::cout << "distance to cone    = " << d << std::endl;
-        if (cloud_cluster->size() <= num_expected_points(centre)) {
+
+        // skip processing step if there is insufficient points
+        if (cloud_cluster->size() < 0.75 * num_expected_points(centre)) {
             continue;
         }
 
-        // set marker properties
-        set_marker_properties(&marker_array_msg.markers[n], centre, n);
+        // add to marker points
+        marker_points.push_back(centre);
 
         // cylindrical reconstruction from ground points
         pcl::ConditionAnd<pcl::PointXYZ>::Ptr cyl_cond (new pcl::ConditionAnd<pcl::PointXYZ> ());
@@ -143,7 +143,13 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
 
         // print info about cluster size
         // std::cout << n << " PointCloud representing the Cluster: " << cloud_cluster->points.size() << " data points." << std::endl;
-        n++;
+    }
+
+    // prepare marker array
+    visualization_msgs::MarkerArray marker_array_msg;
+    marker_array_msg.markers.resize(marker_points.size());
+    for (int i = 0; i < marker_points.size(); ++i) {
+        set_marker_properties(&marker_array_msg.markers[i], marker_points[i], i);
     }
 
     // set additional header info and convert to ROS data type
