@@ -9,11 +9,13 @@ ClusterParams params;
 
 // compute the number of expected points for cone object
 int num_expected_points(const pcl::PointXYZ &centre) {
+    // small cones  228 x 228 x 325 mm (base diag = 0.322)
+    // big cones    285 x 285 x 505 mm
     double d = sqrt(centre.x * centre.x + centre.y * centre.y + centre.z * centre.z);
-    static double hc = 0.31;               // cone height
-    static double wc = 0.30;               // cone width
+    static double hc = 0.3;               // cone height
+    static double wc = 0.3;               // cone width
     static double rv = 2 * M_PI / 8 / 64;  // angular resolution vertical
-    static double rh = 2 * M_PI / 1024;    // angular resolution horizontal
+    static double rh = 2 * M_PI / 512;    // angular resolution horizontal
 
     // compute and return number of expected points
     double E = 0.5 * hc / (2 * d * tan(rv / 2)) * wc / (2 * d * tan(rh / 2));
@@ -103,17 +105,18 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
         pcl::computeCentroid(*cloud_cluster, centre);
 
         double d = sqrt(centre.x * centre.x + centre.y * centre.y + centre.z * centre.z);
-        std::cout << "[potential] num_expected_points = " << 0.60 * num_expected_points(centre) << std::endl;
+        double filter_factor = 0.5; // used for tuning
+        std::cout << "[potential] num_expected_points = " << filter_factor * num_expected_points(centre) << std::endl;
         std::cout << "[potential] num actual points   = " << cloud_cluster->size() << std::endl;
         std::cout << "[potential] distance to cone    = " << d << std::endl;
 
         // skip processing step if there is insufficient points
         int expected = num_expected_points(centre);
-        if (cloud_cluster->size() < 0.60 * expected) {
+        if (cloud_cluster->size() < filter_factor * expected) {
             continue;
         }
 
-        std::cout << "[confirmed] num_expected_points = " << 0.60 * num_expected_points(centre) << std::endl;
+        std::cout << "[confirmed] num_expected_points = " << filter_factor * num_expected_points(centre) << std::endl;
         std::cout << "[confirmed] num actual points   = " << cloud_cluster->size() << std::endl;
         std::cout << "[confirmed] distance to cone    = " << d << std::endl;
 
@@ -214,7 +217,7 @@ void set_marker_properties(
     marker->color.g = params.marker_g;
     marker->color.b = params.marker_b;
 
-    marker->lifetime = ros::Duration(0.1);
+    marker->lifetime = ros::Duration(0.5);
 }
 
 int main(int argc, char **argv)
