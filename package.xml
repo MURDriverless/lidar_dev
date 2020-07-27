@@ -25,6 +25,9 @@
   <build_depend>libpcl-all-dev</build_depend>
   <exec_depend>libpcl-all</exec_depend>
 
+  <!-- Depends on mur_common message -->
+  <build_depend>mur_common</build_depend>
+  <exec_depend>mur_common</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

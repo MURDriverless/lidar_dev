@@ -1,9 +1,11 @@
 // process the /ground_segmentation/obstacle_cloud output from the segmentation node
 
 #include "cluster.h"
+#include <mur_common/cone_msg.h>
 
 ros::Publisher pub;
 ros::Publisher markers_pub; // publisher for cylinder markers
+ros::Publisher results_pub; // publisher for cone_msg
 
 ClusterParams params;
 
@@ -164,7 +166,15 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
     }
 
     std::cout << "NUM OF MARKERS = " << marker_points.size() << std::endl;
-    
+
+    // prepare results msg (in cone_msg format)
+    mur_common::cone_msg cone_msg;
+    for (int i = 0; i < marker_points.size(); ++i) {
+        cone_msg.x.push_back(marker_points[i].x);
+        cone_msg.y.push_back(marker_points[i].y);
+        cone_msg.colour.push_back("na");
+    }
+    cone_msg.frame_id = ground->header.frame_id;
 
     // set additional header info and convert to ROS data type
     sensor_msgs::PointCloud2 output;
@@ -177,6 +187,7 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
     // publish the output data
     pub.publish(output);
     markers_pub.publish(marker_array_msg);
+    results_pub.publish(cone_msg);
 
     // measure and print runtime performance
     end_ = ros::WallTime::now();
@@ -250,6 +261,7 @@ int main(int argc, char **argv)
     // Create a ROS publisher for the output point cloud
     pub = nh.advertise<sensor_msgs::PointCloud2>("cluster_output", 1);
     markers_pub = nh.advertise<visualization_msgs::MarkerArray>("cluster_markers", 1);
+    results_pub = nh.advertise<mur_common::cone_msg>("cone_messages", 1);
 
     // Spin
     ros::spin();

@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
   roscpp
   sensor_msgs
+  mur_common
 )
 
 ## System dependencies are found with CMake's conventions
@@ -214,3 +215,5 @@ target_link_libraries(boxcrop_node ${catkin_LIBRARIES})
 
 add_executable(cluster_node src/cluster.cpp)
 target_link_libraries(cluster_node ${catkin_LIBRARIES})
+
+add_dependencies(cluster_node ${catkin_EXPORTED_TARGETS})
