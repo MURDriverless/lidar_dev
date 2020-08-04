@@ -29,6 +29,9 @@
   <build_depend>mur_common</build_depend>
   <exec_depend>mur_common</exec_depend>
 
+  <!-- Build depend for custom OS1 point cloud type -->
+  <build_depend>ouster_ros</build_depend>
+
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- Other tools can request additional information be placed here -->
