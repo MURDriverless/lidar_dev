@@ -6,8 +6,12 @@
 #include <visualization_msgs/MarkerArray.h>
 
 #include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/Image.h>
+#include <sensor_msgs/fill_image.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
+
+#include <limits>
 
 // PCL specific includes
 #define PCL_NO_PRECOMPILE
@@ -22,9 +26,6 @@
 #include <pcl/features/normal_3d.h>
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
-
-// #include <pcl/segmentation/sac_segmentation.h>
-// #include <pcl/segmentation/impl/sac_segmentation.hpp>
 
 #include <pcl/point_types.h>
 #include <pcl/impl/point_types.hpp>

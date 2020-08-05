@@ -8,17 +8,22 @@ using PointOS1 = ouster_ros::OS1::PointOS1;
 ros::Publisher pub;
 ros::Publisher markers_pub; // publisher for cylinder markers
 ros::Publisher results_pub; // publisher for cone_msg
+ros::Publisher intensity_image_pub; // publisher for intensity images
 
 ClusterParams params;
 
 // compute the number of expected points for cone object
 
 /**
- * num_expected_points
+ * NumExpectedPoints 
+ * computes the number of expected points for a traffic cone given its 3D
+ * centre position.
  * @param centre centre coordinate (x, y, z) of the traffic cone
  * @return the number of expected points in point cloud
+ * 
+ * TODO: grab OS1 row/col scales from sensor instead of hard coding
  */
-int num_expected_points(const pcl::PointXYZ &centre) {
+int NumExpectedPoints(const pcl::PointXYZ &centre) {
     // small cones  228 x 228 x 325 mm (base diag = 0.322)
     // big cones    285 x 285 x 505 mm
     double d = sqrt(centre.x * centre.x + centre.y * centre.y + centre.z * centre.z);
@@ -30,6 +35,87 @@ int num_expected_points(const pcl::PointXYZ &centre) {
     // compute and return number of expected points
     double E = 0.5 * hc / (2 * d * tan(rv / 2)) * wc / (2 * d * tan(rh / 2));
     return (int)E;
+}
+
+/**
+ * CloudToImage
+ * converts a pointcloud cluster to a spherical projection intensity image.
+ * @param cluster point cloud to be converted to an image
+ * @return single channel intensity image
+ * 
+ * TODO: grab OS1 row/col scales from sensor instead of hard coding
+ */
+sensor_msgs::Image CloudToImage(const pcl::PointCloud<PointOS1> &cluster,
+    const std_msgs::Header &lidar_header) {
+    int row_scale = 96;
+    int col_scale = 1536;
+    float fov_vert = 45.0 / 180.0 * M_PI; // 45 deg
+    float fov_up = fov_vert / 2;
+    float fov_down = fov_vert / 2;
+
+    int u_min = INT_MAX;
+    int u_max = INT_MIN;
+    int v_min = INT_MAX;
+    int v_max = INT_MIN;
+
+    // loop through each point in the cloud 
+    for (int i = 0; i < cluster.size(); ++i) {
+        float r = sqrt(cluster[i].x * cluster[i].x + \
+            cluster[i].y * cluster[i].y + cluster[i].z * cluster[i].z);
+        float yaw = atan2(cluster[i].y, cluster[i].x);
+        float pitch = asin(cluster[i].z / r);
+
+        // image coordinate rows
+        int u = row_scale * (1 - (pitch + fov_down) / fov_vert);
+        // image coordinate columns
+        int v = col_scale * 0.5 * ((yaw / M_PI) + 1);
+
+        if (u < u_min) { u_min = u; }
+        if (u > u_max) { u_max = u; }
+        if (v < v_min) { v_min = v; }
+        if (v > v_max) { v_max = v; }
+    }
+
+    // DEBUG print
+    std::cout << "Printing umin, umax, vmin, vmax: " << std::endl;
+    std::cout << u_min << " " << u_max << " " << v_min << " " << v_max << std::endl;
+
+    // compute the left, right, top, bottom boundary
+
+    // intialise image
+    int W = 32;
+    int H = 32;
+    sensor_msgs::Image intensity_image;
+    intensity_image.width = W;
+    intensity_image.height = H;
+    intensity_image.step = W;
+    intensity_image.encoding = "mono8";
+    intensity_image.data.resize(W * H);
+    intensity_image.header = lidar_header;
+
+    // populate image
+    // sensor_msgs::fillImage(intensity_image, "mono8", H, W, W, 0);
+    for (int i = 0; i < cluster.size(); ++i) {
+        float r = sqrt(cluster[i].x * cluster[i].x + \
+            cluster[i].y * cluster[i].y + cluster[i].z * cluster[i].z);
+        float yaw = atan2(cluster[i].y, cluster[i].x);
+        float pitch = asin(cluster[i].z / r);
+
+        // image coordinate rows
+        int u = row_scale * (1 - (pitch + fov_down) / fov_vert);
+        // image coordinate columns
+        int v = col_scale * 0.5 * ((yaw / M_PI) + 1);
+
+        u = u - u_min;
+        v = v - v_min;
+
+        intensity_image.data[u * W + v] = std::min(cluster[i].intensity, 255.f);
+    }
+
+    intensity_image_pub.publish(intensity_image);
+
+    // return image
+    return intensity_image;
 }
 
 // perform euclidean clustering
@@ -113,22 +199,27 @@ void cloud_cluster_cb(
 
         double d = sqrt(centre.x * centre.x + centre.y * centre.y + centre.z * centre.z);
         double filter_factor = 0.6; // used for tuning
-        std::cout << "[potential] num_expected_points = " << filter_factor * num_expected_points(centre) << std::endl;
+        std::cout << "[potential] NumExpectedPoints = " << filter_factor * NumExpectedPoints(centre) << std::endl;
         std::cout << "[potential] num actual points   = " << cloud_cluster->size() << std::endl;
         std::cout << "[potential] distance to cone    = " << d << std::endl;
 
         // skip processing step if there is insufficient points
-        int expected = num_expected_points(centre);
+        int expected = NumExpectedPoints(centre);
         if (cloud_cluster->size() < filter_factor * expected) {
             continue;
         }
 
-        std::cout << "[confirmed] num_expected_points = " << filter_factor * num_expected_points(centre) << std::endl;
+        std::cout << "[confirmed] NumExpectedPoints = " << filter_factor * NumExpectedPoints(centre) << std::endl;
         std::cout << "[confirmed] num actual points   = " << cloud_cluster->size() << std::endl;
         std::cout << "[confirmed] distance to cone    = " << d << std::endl;
 
         // add to marker points
         marker_points.push_back(centre);
+
+        // TODO: recover intensity image (currently only publishing single image crop)
+        sensor_msgs::Image intensity_image;
+        intensity_image = CloudToImage(*cloud_cluster, obstacles_msg->header);
+        break;
 
         // cylindrical reconstruction from ground points
         pcl::ConditionAnd<PointOS1>::Ptr cyl_cond (new pcl::ConditionAnd<PointOS1> ());
@@ -269,6 +360,7 @@ int main(int argc, char **argv)
     pub = nh.advertise<sensor_msgs::PointCloud2>("cluster_output", 1);
     markers_pub = nh.advertise<visualization_msgs::MarkerArray>("cluster_markers", 1);
     results_pub = nh.advertise<mur_common::cone_msg>("cone_messages", 1);
+    intensity_image_pub = nh.advertise<sensor_msgs::Image>("lidar_crop_image", 1);
 
     // Spin
     ros::Duration(0.5).sleep();
