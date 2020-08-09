@@ -5,12 +5,21 @@
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 
+#include <tf2/convert.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_ros/transform_listener.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/Twist.h>
+
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/fill_image.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
 
+#include <cv_bridge/cv_bridge.h>
+#include <opencv2/highgui/highgui.hpp>
 #include <limits>
 
 // PCL specific includes
@@ -54,7 +63,10 @@ struct ClusterParams {
         marker_alpha(0.5),
         marker_r(0.0),
         marker_g(1.0),
-        marker_b(0.0) {}
+        marker_b(0.0),
+        lidar_hori_res(2048),
+        lidar_vert_res(64),
+        filter_factor(1.0) {}
     
     // cluster tolerance 
     double cluster_tol;
@@ -79,6 +91,14 @@ struct ClusterParams {
     double marker_g;
     // marker blue
     double marker_b;
+
+    // lidar horizontal resolution
+    int lidar_hori_res;
+    // lidar vertical resolution
+    int lidar_vert_res;
+
+    // filter factor
+    double filter_factor;
 };
 
 void set_marker_properties(visualization_msgs::Marker *marker, pcl::PointXYZ centre, int n, std::string frame_id);

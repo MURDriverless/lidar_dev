@@ -55,3 +55,16 @@ The config file is located at
 ```
 catkin_ws/src/linefit_ground_segmentation/linefit_ground_segmentation_ros/launch/segmentation_params.yaml
 ```
+
+## Todo
+
+- [ ] Apply transform to point cloud following example below.
+https://answers.ros.org/question/291735/pointcloud2-transform-cpython/
+https://github.com/lucasw/transform_point_cloud/blob/master/src/transform_point_cloud.cpp
+
+- [ ] Fix issue with cylindrical volume reconstruction
+  - [ ] Try point lidar with cable out facing the cone, to see if the problem still comes up
+  - [ ] Once all lidar image pipeline is done, we can revert back to only PointXYZ, maybe this will fix the issue?
+- [ ] Debug horizontal offset problem in cropping lidar image, align lidar with traffic cone and see if caluclated `u, v` values are accurate
+  - [x] Try to see if the horizontal offset is "constant" at different fix orientation as per Andrew Huang's suggestion. 
+  - [x] Implement temporary work around with `magic_offset`.

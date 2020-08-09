@@ -34,10 +34,28 @@ void cloud_cropbox_cb(const sensor_msgs::PointCloud2ConstPtr &cloud_msg)
 	pcl_conversions::toPCL(*cloud_msg, *cloud);
 
     // parameters chosen for 2020-04-13-15-31-43.bag
-	double minX = -4.0;
-	double maxX = 0.0;
-	double minY = -1.0;
-	double maxY = 0.9;
+
+	// ! Orientation 1
+	// double minX = -3.5;
+	// double maxX = 0.0;
+	// double minY = -0.8;
+	// double maxY = 0.8;
+	// double minZ = -1.0;
+	// double maxZ = 1.0;
+
+	// ! Orientation 2
+	// double minX = -0.8;
+	// double maxX = 0.8;
+	// double minY = 0;
+	// double maxY = 3.5;
+	// double minZ = -1.0;
+	// double maxZ = 1.0;
+
+	// ! Orientation 3
+	double minX = -0.8;
+	double maxX = 0.8;
+	double minY = -3.5;
+	double maxY = 0;
 	double minZ = -1.0;
 	double maxZ = 1.0;
 

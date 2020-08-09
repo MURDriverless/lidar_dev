@@ -1,7 +1,7 @@
 cluster_tol: 0.08       # cluster tolerance which affect resulting cluster size
 cluster_min: 10         # cluster minimum number of points
-cluster_max: 250        # cluster maximum nubmer of points
-reconst_radius: 0.17    # radius of the cluster reconstruction
+cluster_max: 350        # cluster maximum nubmer of points
+reconst_radius: 0.13    # radius of the cluster reconstruction
 
 marker_sx: 0.30         # marker scale x
 marker_sy: 0.30         # marker scale y
@@ -10,3 +10,8 @@ marker_alpha: 0.4       # alpha value of marker
 marker_r: 0.0           # red
 marker_g: 1.0           # green
 marker_b: 0.0           # blue
+
+lidar_hori_res: 2048    # lidar horizonal resolution
+lidar_vert_res: 64      # lidar vertical resolution
+
+filter_factor: 0.5      # filter factor (used for tuning rule based filter)
