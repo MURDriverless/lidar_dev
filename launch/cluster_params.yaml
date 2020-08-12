@@ -11,7 +11,8 @@ marker_r: 0.0           # red
 marker_g: 1.0           # green
 marker_b: 0.0           # blue
 
-lidar_hori_res: 2048    # lidar horizonal resolution
+lidar_hori_res: 1024    # lidar horizonal resolution
 lidar_vert_res: 64      # lidar vertical resolution
 
 filter_factor: 0.5      # filter factor (used for tuning rule based filter)
+magic_offset: 9        # temporary measure to align lidar image bounding box

@@ -64,9 +64,10 @@ struct ClusterParams {
         marker_r(0.0),
         marker_g(1.0),
         marker_b(0.0),
-        lidar_hori_res(2048),
+        lidar_hori_res(1024),
         lidar_vert_res(64),
-        filter_factor(1.0) {}
+        filter_factor(1.0),
+        magic_offset(9) {}
     
     // cluster tolerance 
     double cluster_tol;
@@ -99,6 +100,8 @@ struct ClusterParams {
 
     // filter factor
     double filter_factor;
+    // temporary solution for fixing lidar bounding box offset
+    int magic_offset;
 };
 
 void set_marker_properties(visualization_msgs::Marker *marker, pcl::PointXYZ centre, int n, std::string frame_id);
