@@ -15,4 +15,10 @@ lidar_hori_res: 1024    # lidar horizonal resolution
 lidar_vert_res: 64      # lidar vertical resolution
 
 filter_factor: 0.5      # filter factor (used for tuning rule based filter)
-magic_offset: 9        # temporary measure to align lidar image bounding box
+magic_offset: 9         # temporary measure to align lidar image bounding box
+
+
+## lidar image crops related
+experiment_no: 1              # experiment number
+cone_colour: "y"              # y for yellow, b for blue
+save_path: "/tmp/lidar_imgs/" # path where lidar image crops are saved to

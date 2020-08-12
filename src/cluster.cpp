@@ -65,7 +65,11 @@ int NumExpectedPoints(const pcl::PointXYZ &centre) {
 void CloudToImage(
     const pcl::PointCloud<PointOS1> &cluster,
     const std_msgs::Header &lidar_header,
-    const cv_bridge::CvImagePtr &cv_ptr)
+    const cv_bridge::CvImagePtr &cv_ptr,
+    const int &experiment_no,
+    const int &frame_count,
+    const int &cone_count,
+    const std::string &cone_colour)
 {
     int row_scale = params.lidar_vert_res;     // lidar vertical resolution
     int col_scale = params.lidar_hori_res;   // lidar horizontal resolution
@@ -118,14 +122,12 @@ void CloudToImage(
     int top     = u_min;
     int bot     = u_max;
 
-    // expand bounding box to capture extra are256a
+    // expand bounding box to capture extra area
     float expand_factor = 0.1;
-
     int width = right - left;
     int height = bot - top;
     int w_expand = width * expand_factor;
     int h_expand = height * expand_factor;
-
     left    = std::max(left - w_expand, 0);
     right   = std::min(right + w_expand, col_scale);
     top     = std::max(top - h_expand, 0);
@@ -136,6 +138,33 @@ void CloudToImage(
 
     // draw box on full image
     cv::rectangle(cv_ptr->image, cv::Point(left, top), cv::Point(right, bot), cv::Scalar(0, 255, 0));
+
+    // prepare image saving path
+    std::stringstream ss;
+    ss << "lidar_";
+    ss << std::setw(2) << std::setfill('0') << experiment_no << "_";
+    ss << std::setw(3) << std::setfill('0') << frame_count << "_";
+    ss << cone_count << "_";
+    ss << cone_colour;
+    std::string img_path = params.save_path + ss.str() + ".jpg";
+    ROS_INFO("image path = %s\n", img_path.data());
+
+    // resize image
+    cv::Mat resized;
+    cv::resize(roi, resized, cv::Size(32, 32));
+
+    // cv::imshow("resized image", resized);
+    // cv::waitKey(30);
+
+    // supprot for writing JPG
+    std::vector<int> compression_params;
+    compression_params.push_back( CV_IMWRITE_JPEG_QUALITY );
+    compression_params.push_back( 100 );
+
+    // ! will only work if directory exists
+    // TODO: update code to create directory if not exist
+    bool result = cv::imwrite(img_path, resized, compression_params);
+    std::cout << "imwrite result = " << result << std::endl;
 }
 
 // perform euclidean clustering
@@ -204,6 +233,9 @@ void cloud_cluster_cb(
 
     // copy intensity image here, so that multiple bbox can be drawn
     cv_bridge::CvImagePtr intensity_cv_ptr;
+    static int frame_count = 0;
+    int cone_count = 0;
+
     try
     {
         intensity_cv_ptr = cv_bridge::toCvCopy(intensity_msg, sensor_msgs::image_encodings::MONO8);
@@ -283,10 +315,10 @@ void cloud_cluster_cb(
         // add to marker points
         marker_points.push_back(centre);
 
-        // TODO: recover intensity image (currently only publishing single image crop)
-        // TODO: FIX BUG within cloud to image that seems to corrupt the cloud cluster
-        // sensor_msgs::Image intensity_image;
-        CloudToImage(*cloud_cluster, obstacles_msg->header, intensity_cv_ptr);
+        // ! collect data for lidar image classification
+        CloudToImage(*cloud_cluster, obstacles_msg->header, intensity_cv_ptr,
+                     params.experiment_no, frame_count, cone_count, params.cone_colour);
+        cone_count++;
 
         // join each cloud cluster into one combined cluster (visualisation)
         *clustered_cloud = *recovered;
@@ -297,6 +329,8 @@ void cloud_cluster_cb(
 
         // break;
     }
+
+    frame_count++;
 
     // prepare marker array
     visualization_msgs::MarkerArray marker_array_msg;
@@ -397,6 +431,10 @@ int main(int argc, char **argv)
     nh.param("/cluster/lidar_vert_res", params.lidar_vert_res, params.lidar_vert_res);
     nh.param("/cluster/filter_factor", params.filter_factor, params.filter_factor);
     nh.param("/cluster/magic_offset", params.magic_offset, params.magic_offset);
+
+    nh.param("/cluster/experiment_no", params.experiment_no, params.experiment_no);
+    nh.param("/cluster/cone_colour", params.cone_colour, params.cone_colour);
+    nh.param("/cluster/save_path", params.save_path, params.save_path);
     
 
     // Create a ROS subscriber for ground plane and potential obstacles
@@ -418,7 +456,6 @@ int main(int argc, char **argv)
     // message_filters::TimeSynchronizer
     //     <sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::Image> 
     //     sync(ground_sub, obstacles_sub, intensity_sub, 10);
-
     // sync.registerCallback(boost::bind(&cloud_cluster_cb, _1, _2, _3));
 
     // Create a ROS publisher for the output point cloud

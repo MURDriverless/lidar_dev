@@ -67,7 +67,10 @@ struct ClusterParams {
         lidar_hori_res(1024),
         lidar_vert_res(64),
         filter_factor(1.0),
-        magic_offset(9) {}
+        magic_offset(9),
+        experiment_no(0),
+        cone_colour("b"),
+        save_path("/tmp/lidar_imgs/") {}
     
     // cluster tolerance 
     double cluster_tol;
@@ -102,6 +105,13 @@ struct ClusterParams {
     double filter_factor;
     // temporary solution for fixing lidar bounding box offset
     int magic_offset;
+    
+    // lidar data collection experiment count
+    int experiment_no;
+    // traffic cone type used
+    std::string cone_colour;
+    // save path for lidar image crops
+    std::string save_path;
 };
 
 void set_marker_properties(visualization_msgs::Marker *marker, pcl::PointXYZ centre, int n, std::string frame_id);
