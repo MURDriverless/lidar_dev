@@ -2,6 +2,7 @@
 #define CLUSTER_H_
 
 #include <ros/ros.h>
+#include <ros/package.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 
@@ -50,29 +51,30 @@
 #include <pcl/filters/impl/filter.hpp>
 
 #include "ouster_ros/point_os1.h"
+#include "lidarImgClassifier.h"
 
-struct ClusterParams {
-    ClusterParams():
-        cluster_tol(0.08),
-        cluster_min(10),
-        cluster_max(250),
-        reconst_radius(0.6),
-        marker_sx(0.35),
-        marker_sy(0.35),
-        marker_sz(0.7),
-        marker_alpha(0.5),
-        marker_r(0.0),
-        marker_g(1.0),
-        marker_b(0.0),
-        lidar_hori_res(1024),
-        lidar_vert_res(64),
-        filter_factor(1.0),
-        magic_offset(9),
-        experiment_no(0),
-        cone_colour("b"),
-        save_path("/tmp/lidar_imgs/") {}
-    
-    // cluster tolerance 
+struct ClusterParams
+{
+    ClusterParams() : cluster_tol(0.08),
+                      cluster_min(10),
+                      cluster_max(250),
+                      reconst_radius(0.6),
+                      marker_sx(0.35),
+                      marker_sy(0.35),
+                      marker_sz(0.7),
+                      marker_alpha(0.5),
+                      marker_r(0.0),
+                      marker_g(1.0),
+                      marker_b(0.0),
+                      lidar_hori_res(1024),
+                      lidar_vert_res(64),
+                      filter_factor(1.0),
+                      magic_offset(9),
+                      experiment_no(0),
+                      cone_colour("b"),
+                      save_path("/tmp/lidar_imgs/") {}
+
+    // cluster tolerance
     double cluster_tol;
     // cluster minimum number of points
     int cluster_min;
@@ -105,7 +107,7 @@ struct ClusterParams {
     double filter_factor;
     // temporary solution for fixing lidar bounding box offset
     int magic_offset;
-    
+
     // lidar data collection experiment count
     int experiment_no;
     // traffic cone type used
@@ -114,8 +116,27 @@ struct ClusterParams {
     std::string save_path;
 };
 
-void set_marker_properties(visualization_msgs::Marker *marker, pcl::PointXYZ centre, int n, std::string frame_id);
-void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, const sensor_msgs::PointCloud2ConstPtr &ground_msg);
-int num_expected_points(const pcl::PointXYZ &centre);
+class ClusterDetector
+{
+public:
+    ClusterDetector(std::string clf_onnx, std::string clf_trt);
+    void cloud_cluster_cb(
+        const sensor_msgs::PointCloud2ConstPtr &obstacles_msg,
+        const sensor_msgs::PointCloud2ConstPtr &ground_msg,
+        const sensor_msgs::ImageConstPtr &intensity_msg);
+
+private:
+    int num_expected_points(const pcl::PointXYZ &centre);
+    void set_marker_properties(
+        visualization_msgs::Marker *marker,
+        pcl::PointXYZ centre,
+        int n,
+        std::string frame_id);
+
+    std::unique_ptr<LidarImgClassifier> lidarImgClassifier_;
+    int clfImgW;
+    int clfImgH;
+    int maxBatch;
+};
 
 #endif // CLUSTER_H_

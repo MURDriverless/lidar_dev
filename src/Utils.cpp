@@ -112,7 +112,7 @@ void onnxToTRTModel(
 
     assert(network->getNbOutputs() == 1);
     auto outputDims = network->getOutput(0)->getDimensions();
-    assert(inputDims.nbDims == 1);
+    assert(outputDims.nbDims == 2); // b, 2
 
     parser->destroy();
     trtModelStream = engine->serialize();

@@ -1,39 +1,35 @@
 // process the /ground_segmentation/obstacle_cloud output from the segmentation node
 
 #include "cluster.h"
-#include "lidarImgClassifier.h"
 #include <mur_common/cone_msg.h>
 
 using PointOS1 = ouster_ros::OS1::PointOS1;
 
-ros::Publisher pub; // publisher for all reconstructed cluster clouds
-ros::Publisher markers_pub; // publisher for cylinder markers
-ros::Publisher results_pub; // publisher for cone_msg
+ros::Publisher pub;                 // publisher for all reconstructed cluster clouds
+ros::Publisher markers_pub;         // publisher for cylinder markers
+ros::Publisher results_pub;         // publisher for cone_msg
 ros::Publisher intensity_image_pub; // publisher for intensity images
 
 ClusterParams params;
 
-std::vector<int> get_px_offset(int lidar_mode) {
-    auto repeat = [](int n, const std::vector<int>& v) {
-        std::vector<int> res{};
-        for (int i = 0; i < n; i++) res.insert(res.end(), v.begin(), v.end());
-        return res;
-    };
+ClusterDetector::ClusterDetector(std::string clf_onnx, std::string clf_trt)
+{
+    // set classifier parameters
+    clfImgW = 32;
+    clfImgH = 32;
+    maxBatch = 50;
 
-    switch (lidar_mode) {
-        case 512:
-            return repeat(16, {0, 3, 6, 9});
-        case 1024:
-            return repeat(16, {0, 6, 12, 18});
-        case 2048:
-            return repeat(16, {0, 12, 24, 36});
-        default:
-            return std::vector<int>{64, 0};
-    }
+    lidarImgClassifier_.reset(
+        new LidarImgClassifier(
+            clf_onnx,
+            clf_trt,
+            clfImgW,
+            clfImgH,
+            maxBatch));
 }
 
 /**
- * NumExpectedPoints 
+ * num_expected_points 
  * computes the number of expected points for a traffic cone given its 3D
  * centre position.
  * @param centre centre coordinate (x, y, z) of the traffic cone
@@ -41,14 +37,15 @@ std::vector<int> get_px_offset(int lidar_mode) {
  * 
  * TODO: grab OS1 row/col scales from sensor instead of hard coding
  */
-int NumExpectedPoints(const pcl::PointXYZ &centre) {
+int ClusterDetector::num_expected_points(const pcl::PointXYZ &centre)
+{
     // small cones  228 x 228 x 325 mm (base diag = 0.322)
     // big cones    285 x 285 x 505 mm
     double d = sqrt(centre.x * centre.x + centre.y * centre.y + centre.z * centre.z);
-    static double hc = 0.31;               // cone height
-    static double wc = 0.30;               // cone width
-    static double rv = 2 * M_PI / 8 / params.lidar_vert_res;    // angular resolution vertical
-    static double rh = 2 * M_PI / params.lidar_hori_res;        // angular resolution horizontal
+    static double hc = 0.31;                                 // cone height
+    static double wc = 0.30;                                 // cone width
+    static double rv = 2 * M_PI / 8 / params.lidar_vert_res; // angular resolution vertical
+    static double rh = 2 * M_PI / params.lidar_hori_res;     // angular resolution horizontal
 
     // compute and return number of expected points
     double E = 0.5 * hc / (2 * d * tan(rv / 2)) * wc / (2 * d * tan(rh / 2));
@@ -72,8 +69,8 @@ void CloudToImage(
     const int &cone_count,
     const std::string &cone_colour)
 {
-    int row_scale = params.lidar_vert_res;     // lidar vertical resolution
-    int col_scale = params.lidar_hori_res;   // lidar horizontal resolution
+    int row_scale = params.lidar_vert_res; // lidar vertical resolution
+    int col_scale = params.lidar_hori_res; // lidar horizontal resolution
 
     // TODO: grab fov from lidar config
     // using os1 gen1 specs
@@ -89,15 +86,16 @@ void CloudToImage(
     int v_min = INT_MAX;
     int v_max = INT_MIN;
 
-    // loop through each point in the cloud 
-    for (int i = 0; i < cluster.size(); ++i) {
-        
+    // loop through each point in the cloud
+    for (int i = 0; i < cluster.size(); ++i)
+    {
+
         // ? try rotate cloud by 180
         float x = -cluster[i].x;
         float y = -cluster[i].y;
         float z = cluster[i].z;
 
-        float r = sqrt(x*x + y*y + z*z);
+        float r = sqrt(x * x + y * y + z * z);
         float yaw = atan2(y, x);
         float pitch = asin(z / r);
 
@@ -106,10 +104,22 @@ void CloudToImage(
         // image coordinate columns
         int v = col_scale * 0.5 * ((yaw / M_PI) + 1);
 
-        if (u < u_min) { u_min = u; }
-        if (u > u_max) { u_max = u; }
-        if (v < v_min) { v_min = v; }
-        if (v > v_max) { v_max = v; }
+        if (u < u_min)
+        {
+            u_min = u;
+        }
+        if (u > u_max)
+        {
+            u_max = u;
+        }
+        if (v < v_min)
+        {
+            v_min = v;
+        }
+        if (v > v_max)
+        {
+            v_max = v;
+        }
     }
 
     // DEBUG print
@@ -118,10 +128,10 @@ void CloudToImage(
 
     // TODO: fix magic offset static (credits to Andrew Huang)
     int magic_offset = params.magic_offset;
-    int left    = col_scale - v_max - magic_offset;
-    int right   = col_scale - v_min - magic_offset;
-    int top     = u_min;
-    int bot     = u_max;
+    int left = col_scale - v_max - magic_offset;
+    int right = col_scale - v_min - magic_offset;
+    int top = u_min;
+    int bot = u_max;
 
     // expand bounding box to capture extra area
     float expand_factor = 0.1;
@@ -129,10 +139,10 @@ void CloudToImage(
     int height = bot - top;
     int w_expand = width * expand_factor;
     int h_expand = height * expand_factor;
-    left    = std::max(left - w_expand, 0);
-    right   = std::min(right + w_expand, col_scale);
-    top     = std::max(top - h_expand, 0);
-    bot     = std::min(bot + h_expand, row_scale);
+    left = std::max(left - w_expand, 0);
+    right = std::min(right + w_expand, col_scale);
+    top = std::max(top - h_expand, 0);
+    bot = std::min(bot + h_expand, row_scale);
 
     cv::Rect box(cv::Point(left, top), cv::Point(right, bot));
     cv::Mat roi = cv_ptr->image(box);
@@ -159,8 +169,8 @@ void CloudToImage(
 
     // supprot for writing JPG
     std::vector<int> compression_params;
-    compression_params.push_back( CV_IMWRITE_JPEG_QUALITY );
-    compression_params.push_back( 100 );
+    compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
+    compression_params.push_back(100);
 
     // ! will only work if directory exists
     // TODO: update code to create directory if not exist
@@ -169,15 +179,15 @@ void CloudToImage(
 }
 
 // perform euclidean clustering
-void cloud_cluster_cb(
-    const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, 
+void ClusterDetector::cloud_cluster_cb(
+    const sensor_msgs::PointCloud2ConstPtr &obstacles_msg,
     const sensor_msgs::PointCloud2ConstPtr &ground_msg,
     const sensor_msgs::ImageConstPtr &intensity_msg)
 {
     // time callback run time as performance measure
     ros::WallTime start_, end_;
     start_ = ros::WallTime::now();
-    
+
     pcl::PointCloud<PointOS1>::Ptr input(new pcl::PointCloud<PointOS1>);
     pcl::PointCloud<PointOS1>::Ptr input_ground(new pcl::PointCloud<PointOS1>);
 
@@ -218,9 +228,9 @@ void cloud_cluster_cb(
 
     std::vector<pcl::PointIndices> cluster_indices;
     pcl::EuclideanClusterExtraction<PointOS1> ec;
-    ec.setClusterTolerance(params.cluster_tol);     // 8cm (affects resulting cluster size)
-    ec.setMinClusterSize(params.cluster_min);       // minimum number of points
-    ec.setMaxClusterSize(params.cluster_max);       // maximum number of points
+    ec.setClusterTolerance(params.cluster_tol); // 8cm (affects resulting cluster size)
+    ec.setMinClusterSize(params.cluster_min);   // minimum number of points
+    ec.setMaxClusterSize(params.cluster_max);   // maximum number of points
     ec.setSearchMethod(tree);
     ec.setInputCloud(cloud_filtered);
     ec.extract(cluster_indices);
@@ -241,7 +251,7 @@ void cloud_cluster_cb(
     {
         intensity_cv_ptr = cv_bridge::toCvCopy(intensity_msg, sensor_msgs::image_encodings::MONO8);
     }
-    catch(cv_bridge::Exception& e)
+    catch (cv_bridge::Exception &e)
     {
         ROS_ERROR("Could not convert from '%s' to 'mono8'.", intensity_msg->encoding.c_str());
     }
@@ -267,11 +277,11 @@ void cloud_cluster_cb(
 
         // TODO: cylindrical reconsturction BEFORE rule based filter
         // perform cylindrical reconstruction from ground points
-        pcl::ConditionAnd<PointOS1>::Ptr cyl_cond (new pcl::ConditionAnd<PointOS1> ());
+        pcl::ConditionAnd<PointOS1>::Ptr cyl_cond(new pcl::ConditionAnd<PointOS1>());
 
         Eigen::Matrix3f cylinderMatrix;
-        cylinderMatrix(0,0) = 1.0;
-        cylinderMatrix(1,1) = 1.0;
+        cylinderMatrix(0, 0) = 1.0;
+        cylinderMatrix(1, 1) = 1.0;
 
         Eigen::Vector3f cylinderPosition;
         cylinderPosition << -centre.x, -centre.y, 0;
@@ -279,10 +289,7 @@ void cloud_cluster_cb(
         double radius = params.reconst_radius;
         float cylinderScalar = -(radius * radius) + centre.x * centre.x + centre.y * centre.y;
 
-
-        pcl::TfQuadraticXYZComparison<PointOS1>::Ptr cyl_comp 
-            (new pcl::TfQuadraticXYZComparison<PointOS1> 
-            (pcl::ComparisonOps::LE, cylinderMatrix, cylinderPosition, cylinderScalar));
+        pcl::TfQuadraticXYZComparison<PointOS1>::Ptr cyl_comp(new pcl::TfQuadraticXYZComparison<PointOS1>(pcl::ComparisonOps::LE, cylinderMatrix, cylinderPosition, cylinderScalar));
 
         cyl_cond->addComparison(cyl_comp);
         pcl::PointCloud<PointOS1>::Ptr recovered(new pcl::PointCloud<PointOS1>);
@@ -295,21 +302,22 @@ void cloud_cluster_cb(
 
         *cloud_cluster += *recovered;
 
-        // apply rule based filter 
+        // apply rule based filter
         double filter_factor = params.filter_factor; // used for tuning
-        std::cout << "[potential] NumExpectedPoints = " << filter_factor * NumExpectedPoints(centre) << std::endl;
+        std::cout << "[potential] NumExpectedPoints = " << filter_factor * num_expected_points(centre) << std::endl;
         std::cout << "[potential] num actual points = " << cloud_cluster->size() << std::endl;
         std::cout << "[potential] distance to cone  = " << d << std::endl;
 
         // skip processing step if there is insufficient points
-        int expected = NumExpectedPoints(centre);
-        if (cloud_cluster->size() < filter_factor * expected) {
+        int expected = num_expected_points(centre);
+        if (cloud_cluster->size() < filter_factor * expected)
+        {
             continue;
         }
 
         std::cout << "[confirmed] Printing x, y, r   " << centre.x << " " << centre.y << " " << radius << std::endl;
 
-        std::cout << "[confirmed] NumExpectedPoints = " << filter_factor * NumExpectedPoints(centre) << std::endl;
+        std::cout << "[confirmed] NumExpectedPoints = " << filter_factor * num_expected_points(centre) << std::endl;
         std::cout << "[confirmed] num actual points = " << cloud_cluster->size() << std::endl;
         std::cout << "[confirmed] distance to cone  = " << d << std::endl;
 
@@ -336,7 +344,8 @@ void cloud_cluster_cb(
     // prepare marker array
     visualization_msgs::MarkerArray marker_array_msg;
     marker_array_msg.markers.resize(marker_points.size());
-    for (int i = 0; i < marker_points.size(); ++i) {
+    for (int i = 0; i < marker_points.size(); ++i)
+    {
         set_marker_properties(&marker_array_msg.markers[i], marker_points[i], i, input->header.frame_id);
     }
 
@@ -344,7 +353,8 @@ void cloud_cluster_cb(
 
     // prepare results msg (in cone_msg format)
     mur_common::cone_msg cone_msg;
-    for (int i = 0; i < marker_points.size(); ++i) {
+    for (int i = 0; i < marker_points.size(); ++i)
+    {
         cone_msg.x.push_back(marker_points[i].x);
         cone_msg.y.push_back(marker_points[i].y);
         cone_msg.colour.push_back("na");
@@ -375,10 +385,10 @@ void cloud_cluster_cb(
 }
 
 // function to set the marker properties
-void set_marker_properties(
-    visualization_msgs::Marker *marker, 
-    pcl::PointXYZ centre, 
-    int n, 
+void ClusterDetector::set_marker_properties(
+    visualization_msgs::Marker *marker,
+    pcl::PointXYZ centre,
+    int n,
     std::string frame_id)
 {
     marker->header.frame_id = frame_id;
@@ -432,30 +442,33 @@ int main(int argc, char **argv)
     nh.param("/cluster/lidar_vert_res", params.lidar_vert_res, params.lidar_vert_res);
     nh.param("/cluster/filter_factor", params.filter_factor, params.filter_factor);
     nh.param("/cluster/magic_offset", params.magic_offset, params.magic_offset);
-
     nh.param("/cluster/experiment_no", params.experiment_no, params.experiment_no);
     nh.param("/cluster/cone_colour", params.cone_colour, params.cone_colour);
     nh.param("/cluster/save_path", params.save_path, params.save_path);
-    
+
+    // ! Initialise ClusterDetector
+    const std::string clf_onnx = ros::package::getPath("lidar_dev") + "/models/lidar_cone_classifier.onnx";
+    const std::string clf_trt = ros::package::getPath("lidar_dev") + "/models/lidar_cone_classifier.trt";
+    ClusterDetector clusterDetector(clf_onnx, clf_trt);
 
     // Create a ROS subscriber for ground plane and potential obstacles
     message_filters::Subscriber<sensor_msgs::PointCloud2> ground_sub(nh, "ground_segmentation/obstacle_cloud", 1);
     message_filters::Subscriber<sensor_msgs::PointCloud2> obstacles_sub(nh, "ground_segmentation/ground_cloud", 1);
     message_filters::Subscriber<sensor_msgs::Image> intensity_sub(nh, "img_node/intensity_image", 1);
 
-    // ! approximate time sync policy
-    typedef message_filters::sync_policies::ApproximateTime
-        <sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::Image>  mySyncPolicy;
+    // ! Approximate time sync policy
+    // TODO: Sync properly with new non-Ouster driver
+    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::Image> mySyncPolicy;
 
-    message_filters::Synchronizer<mySyncPolicy> 
+    message_filters::Synchronizer<mySyncPolicy>
         sync(mySyncPolicy(10), ground_sub, obstacles_sub, intensity_sub);
 
-    sync.registerCallback(boost::bind(&cloud_cluster_cb, _1, _2, _3));
+    sync.registerCallback(boost::bind(&ClusterDetector::cloud_cluster_cb, &clusterDetector, _1, _2, _3));
 
     // ! exact time sync policy
     // Pass both subscribed message into the same callback
     // message_filters::TimeSynchronizer
-    //     <sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::Image> 
+    //     <sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::Image>
     //     sync(ground_sub, obstacles_sub, intensity_sub, 10);
     // sync.registerCallback(boost::bind(&cloud_cluster_cb, _1, _2, _3));
 
