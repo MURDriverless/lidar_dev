@@ -2,6 +2,7 @@
 
 #include "NvInfer.h"
 #include "NvOnnxParser.h"
+#include <cudnn.h>
 
 #include <iostream>
 #include <vector>
@@ -155,7 +156,7 @@ void onnxToTRTModel(const std::string &modelFile,
                     Logger &logger,
                     bool useInt8 = false,
                     bool markOutput = false,
-                    IInt8EntropyCalibrator *calibrator);
+                    nvinfer1::IInt8EntropyCalibrator *calibrator = nullptr);
 
 nvinfer1::ICudaEngine *engineFromFiles(std::string onnxFile, std::string trtFile, nvinfer1::IRuntime *runtime,
                                        int batchSize, Logger &logger, bool useInt8 = true, bool markOutput = false, nvinfer1::IInt8EntropyCalibrator *calibrator = nullptr);

@@ -16,7 +16,7 @@ using namespace nvinfer1;
 using namespace std;
 
 LidarImgClassifier::LidarImgClassifier(
-    string onnxFIle,
+    string onnxFile,
     string trtFile,
     int input_w,
     int input_h,
@@ -29,7 +29,7 @@ LidarImgClassifier::LidarImgClassifier(
     assert(runtime_ != nullptr);
     runtime_->setDLACore(0);
 
-    engine_ = engineFromFiles(onnxFile, trtFile, runtime_, matBatch_, logger, false);
+    engine_ = engineFromFiles(onnxFile, trtFile, runtime_, maxBatch_, logger_, false);
 
     context_ = engine_->createExecutionContext();
 

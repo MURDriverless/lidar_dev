@@ -1,6 +1,7 @@
 // process the /ground_segmentation/obstacle_cloud output from the segmentation node
 
 #include "cluster.h"
+#include "lidarImgClassifier.h"
 #include <mur_common/cone_msg.h>
 
 using PointOS1 = ouster_ros::OS1::PointOS1;
