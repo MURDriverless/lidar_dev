@@ -22,7 +22,7 @@ public:
     ~LidarImgClassifier();
     std::vector<int> doInference(std::vector<cv::Mat>& imgs);
 private:
-    int interpretOutputTensor(float *tensor, int width, int height);
+    int interpretOutputTensor(float *tensor);
     Logger logger_;
 
     nvinfer1::IExecutionContext* context_;
@@ -36,4 +36,4 @@ private:
     int inputW_;
     int inputH_;
     int maxBatch_;
-}
+};

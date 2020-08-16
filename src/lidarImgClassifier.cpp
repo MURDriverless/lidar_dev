@@ -1,5 +1,3 @@
-#include "lidarImgClassifier.h"
-
 #include <assert.h>
 // #include <cublas_v2.h>
 // #include <cudnn.h>
@@ -11,6 +9,8 @@
 #include <time.h>
 #include <opencv2/opencv.hpp>
 #include <chrono>
+
+#include "lidarImgClassifier.h"
 
 using namespace nvinfer1;
 using namespace std;
@@ -68,9 +68,9 @@ LidarImgClassifier::~LidarImgClassifier()
         CUDA_CHECK(cudaFree(buffers_.get()[b]));
     }
     // destry the engine_
-    context_->destry();
-    engine_->destry();
-    runtime_->destry();
+    context_->destroy();
+    engine_->destroy();
+    runtime_->destroy();
 }
 
 int LidarImgClassifier::interpretOutputTensor(float *tensor)
@@ -92,7 +92,7 @@ int LidarImgClassifier::interpretOutputTensor(float *tensor)
     for (int i = 0; i < outputSize; i++)
     {
         output[i] /= sum;
-        val = std::max(val, output[i])
+        val = std::max(val, output[i]);
         if (val == output[i])
         {
             idx = i;
@@ -118,7 +118,7 @@ vector<int> LidarImgClassifier::doInference(vector<cv::Mat> & imgs)
     int nbBindings = engine_->getNbBindings();
 
     // copy input to GPU, execute batch asynchronously, then copy back
-    CUDA_CHECK(cudaMemcpyAync(
+    CUDA_CHECK(cudaMemcpyAsync(
         buffers_.get()[0], 
         inputData_.get(), 
         batchSize * volume(engine_->getBindingDimensions(0)) * sizeof(float), 
@@ -140,20 +140,20 @@ vector<int> LidarImgClassifier::doInference(vector<cv::Mat> & imgs)
                 cudaMemcpyDeviceToHost,
                 stream_
             ));
-            output+= matBatch_ * size;
+            output+= maxBatch_ * size;
         }
     }
     cudaStreamSynchronize(stream_);
 
     auto t_end = std::chrono::high_resolution_clock::now();
     auto total = std::chrono::duration<float, std::milli>(t_end - t_start).count();
-    std::count << "Time take for classification is " << total << " ms." std::endl;
+    std::cout << "Time take for classification is " << total << " ms." << std::endl;
 
     output = outputData_.get();
     vector<int> results(batchSize);
     for (int b = 0; b < batchSize; b++)
     {
-        results[b] = interpretOutputTensor(output, imgs[b].cols, imgs[b].rows);
+        results[b] = interpretOutputTensor(output);
         output += outputSize; // ? not sure if this is correct? check with NV exmaples
     }
     return results;

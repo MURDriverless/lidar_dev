@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(lidar_dev)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC -Wno-deprecated-declarations -Wno-unused-variable")
+
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
 
@@ -29,8 +32,8 @@ find_package(CUDA 10.0 REQUIRED)
 set(CUDA_VERBOSE_BUILD ON)
 set(CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
 
-# find_package(CUDNN REQUIRED)
-# include_directories(${CUDNN_INCLUDE_DIR})
+find_package(CUDNN REQUIRED)
+include_directories(${CUDNN_INCLUDE_DIR})
 
 #-------------------------------------------------------------------------------
 # External Libraries
@@ -79,7 +82,7 @@ include_directories(
   ${ouster_ros_INCLUDE_DIRS}
   ${OPENCV_INCLUDE_DIRS}
   ${TENSORRT_INCLUDE_DIR}
-  ${CUDNN_INCLUDE_DIR}
+  # ${CUDNN_INCLUDE_DIR}
 )
 
 add_executable(segmentation_node src/segmentation.cpp)

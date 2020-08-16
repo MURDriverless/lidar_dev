@@ -1,16 +1,16 @@
 #pragma once
 
-#include "NvInfer.h"
-#include "NvOnnxParser.h"
-#include <cudnn.h>
-
 #include <iostream>
 #include <vector>
 #include <map>
 #include <iomanip>
-#include <opencv2/opencv.hpp>
 #include <numeric>
 #include <fstream>
+
+#include <opencv2/opencv.hpp>
+#include <cudnn.h>
+#include "NvInfer.h"
+#include "NvOnnxParser.h"
 
 #define CUDA_CHECK(callstr)                                                                    \
     {                                                                                          \
