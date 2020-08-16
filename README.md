@@ -56,6 +56,13 @@ The config file is located at
 catkin_ws/src/linefit_ground_segmentation/linefit_ground_segmentation_ros/launch/segmentation_params.yaml
 ```
 
+## References
+
+References for TensorRT related implementation.
+* https://github.com/cv-core/tensorrt_ros
+* https://github.com/NVIDIA/TensorRT/tree/master/samples/opensource/sampleOnnxMNIST
+* https://docs.nvidia.com/deeplearning/tensorrt/developer-guide/index.html
+
 ## Todo
 
 - [ ] Apply transform to point cloud following example below.

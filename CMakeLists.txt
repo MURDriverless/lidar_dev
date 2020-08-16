@@ -23,6 +23,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package()
 
 include_directories(
+  include
   ${catkin_INCLUDE_DIRS}
   ${ouster_ros_INCLUDE_DIRS}
   ${OPENCV_INCLUDE_DIRS}
