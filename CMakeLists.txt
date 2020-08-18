@@ -19,7 +19,6 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   mur_common
-  ouster_ros
   cv_bridge
 )
 
@@ -79,10 +78,8 @@ target_link_libraries(classifier ${OPENCV_LIBS} ${catkin_LIBRARIES} nvonnxparser
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
-  ${ouster_ros_INCLUDE_DIRS}
   ${OPENCV_INCLUDE_DIRS}
   ${TENSORRT_INCLUDE_DIR}
-  # ${CUDNN_INCLUDE_DIR}
 )
 
 add_executable(segmentation_node src/segmentation.cpp)

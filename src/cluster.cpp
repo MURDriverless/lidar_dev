@@ -1,9 +1,5 @@
-// process the /ground_segmentation/obstacle_cloud output from the segmentation node
-
 #include "cluster.h"
 #include <mur_common/cone_msg.h>
-
-using PointOS1 = ouster_ros::OS1::PointOS1;
 
 ros::Publisher pub;                 // publisher for all reconstructed cluster clouds
 ros::Publisher markers_pub;         // publisher for cylinder markers
@@ -29,12 +25,12 @@ ClusterDetector::ClusterDetector(std::string clf_onnx, std::string clf_trt)
 }
 
 /**
- * num_expected_points 
+ * num_expected_points
  * computes the number of expected points for a traffic cone given its 3D
  * centre position.
  * @param centre centre coordinate (x, y, z) of the traffic cone
  * @return the number of expected points in point cloud
- * 
+ *
  * TODO: grab OS1 row/col scales from sensor instead of hard coding
  */
 int ClusterDetector::num_expected_points(const pcl::PointXYZ &centre)
@@ -59,7 +55,7 @@ int ClusterDetector::num_expected_points(const pcl::PointXYZ &centre)
  * @param cluster point cloud representing a traffic cone
  * @return rectangle specifying where the bounding box should be
  */
-cv::Rect ClusterDetector::cloud_to_bbox(const pcl::PointCloud<PointOS1> &cluster)
+cv::Rect ClusterDetector::cloud_to_bbox(const pcl::PointCloud<pcl::PointXYZ> &cluster)
 {
     int row_scale = params.lidar_vert_res; // lidar vertical resolution
     int col_scale = params.lidar_hori_res; // lidar horizontal resolution
@@ -135,15 +131,19 @@ cv::Rect ClusterDetector::cloud_to_bbox(const pcl::PointCloud<PointOS1> &cluster
 /**
  * cloud_to_img
  * Finds the approximate bounding box, and then generate an image crop.
+ * The approximated bounding box is also draw on the intensity image.
+ * @param cluster traffic cone point cloud (after cylindrical reconstruction)
+ * @param cv_ptr intensity image
  */
 cv::Mat ClusterDetector::cloud_to_img(
-    const pcl::PointCloud<PointOS1> &cluster,
+    const pcl::PointCloud<pcl::PointXYZ> &cluster,
     const cv_bridge::CvImagePtr &cv_ptr)
 {
     cv::Rect bbox = cloud_to_bbox(cluster);
     cv::Mat roi = cv_ptr->image(bbox);
-    
-    // draw bounding box for visualisation
+
+    // ! draw bounding box for visualisation
+    // ! note this will affect inference performance
     cv::rectangle(cv_ptr->image, bbox, cv::Scalar(0, 255, 0));
 
     return roi;
@@ -154,12 +154,12 @@ cv::Mat ClusterDetector::cloud_to_img(
  * converts a pointcloud cluster to a spherical projection intensity image.
  * @param cluster point cloud used to approximate bounding box
  * @return single channel intensity image
- * 
+ *
  * TODO: grab OS1 row/col scales from sensor instead of hard coding
  * TODO: refactor this data collection routine into new ClusterDetector class
  */
 void CloudToImage(
-    const pcl::PointCloud<PointOS1> &cluster,
+    const pcl::PointCloud<pcl::PointXYZ> &cluster,
     const std_msgs::Header &lidar_header,
     const cv_bridge::CvImagePtr &cv_ptr,
     const int &experiment_no,
@@ -276,7 +276,14 @@ void CloudToImage(
     std::cout << "imwrite result = " << result << std::endl;
 }
 
-// perform euclidean clustering
+/**
+ * cloud_cluster_cb
+ * Main callback function that performs clustering and classification of
+ * the input point clouds.
+ * @param obstacles_msg point cloud containing all potential cones
+ * @param ground_msg point cloud containing all detected ground points
+ * @param intensity_msg intensity image constructed by OS1 img_node
+ */
 void ClusterDetector::cloud_cluster_cb(
     const sensor_msgs::PointCloud2ConstPtr &obstacles_msg,
     const sensor_msgs::PointCloud2ConstPtr &ground_msg,
@@ -286,46 +293,46 @@ void ClusterDetector::cloud_cluster_cb(
     ros::WallTime start_, end_;
     start_ = ros::WallTime::now();
 
-    pcl::PointCloud<PointOS1>::Ptr input(new pcl::PointCloud<PointOS1>);
-    pcl::PointCloud<PointOS1>::Ptr input_ground(new pcl::PointCloud<PointOS1>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr input(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr input_ground(new pcl::PointCloud<pcl::PointXYZ>);
 
     pcl::fromROSMsg(*obstacles_msg, *input);
     pcl::fromROSMsg(*ground_msg, *input_ground);
 
     // Use a conditional filter to remove points at the origin (0, 0, 0)
-    pcl::ConditionOr<PointOS1>::Ptr range_cond(new pcl::ConditionOr<PointOS1>());
+    pcl::ConditionOr<pcl::PointXYZ>::Ptr range_cond(new pcl::ConditionOr<pcl::PointXYZ>());
 
-    range_cond->addComparison(pcl::FieldComparison<PointOS1>::ConstPtr(
-        new pcl::FieldComparison<PointOS1>("x", pcl::ComparisonOps::GT, 0.0)));
-    range_cond->addComparison(pcl::FieldComparison<PointOS1>::ConstPtr(
-        new pcl::FieldComparison<PointOS1>("y", pcl::ComparisonOps::GT, 0.0)));
-    range_cond->addComparison(pcl::FieldComparison<PointOS1>::ConstPtr(
-        new pcl::FieldComparison<PointOS1>("z", pcl::ComparisonOps::GT, 0.0)));
+    range_cond->addComparison(pcl::FieldComparison<pcl::PointXYZ>::ConstPtr(
+        new pcl::FieldComparison<pcl::PointXYZ>("x", pcl::ComparisonOps::GT, 0.0)));
+    range_cond->addComparison(pcl::FieldComparison<pcl::PointXYZ>::ConstPtr(
+        new pcl::FieldComparison<pcl::PointXYZ>("y", pcl::ComparisonOps::GT, 0.0)));
+    range_cond->addComparison(pcl::FieldComparison<pcl::PointXYZ>::ConstPtr(
+        new pcl::FieldComparison<pcl::PointXYZ>("z", pcl::ComparisonOps::GT, 0.0)));
 
-    range_cond->addComparison(pcl::FieldComparison<PointOS1>::ConstPtr(
-        new pcl::FieldComparison<PointOS1>("x", pcl::ComparisonOps::LT, 0.0)));
-    range_cond->addComparison(pcl::FieldComparison<PointOS1>::ConstPtr(
-        new pcl::FieldComparison<PointOS1>("y", pcl::ComparisonOps::LT, 0.0)));
-    range_cond->addComparison(pcl::FieldComparison<PointOS1>::ConstPtr(
-        new pcl::FieldComparison<PointOS1>("z", pcl::ComparisonOps::LT, 0.0)));
+    range_cond->addComparison(pcl::FieldComparison<pcl::PointXYZ>::ConstPtr(
+        new pcl::FieldComparison<pcl::PointXYZ>("x", pcl::ComparisonOps::LT, 0.0)));
+    range_cond->addComparison(pcl::FieldComparison<pcl::PointXYZ>::ConstPtr(
+        new pcl::FieldComparison<pcl::PointXYZ>("y", pcl::ComparisonOps::LT, 0.0)));
+    range_cond->addComparison(pcl::FieldComparison<pcl::PointXYZ>::ConstPtr(
+        new pcl::FieldComparison<pcl::PointXYZ>("z", pcl::ComparisonOps::LT, 0.0)));
 
     // build the filter
-    pcl::ConditionalRemoval<PointOS1> condrem;
+    pcl::ConditionalRemoval<pcl::PointXYZ> condrem;
     condrem.setCondition(range_cond);
     condrem.setInputCloud(input);
     condrem.setKeepOrganized(false);
 
     // apply filter
-    pcl::PointCloud<PointOS1>::Ptr cloud_filtered(new pcl::PointCloud<PointOS1>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZ>);
     condrem.filter(*cloud_filtered);
     std::cout << "PointCloud after conditional filtering has: " << cloud_filtered->points.size() << " data points." << std::endl;
 
     // create KdTree object
-    pcl::search::KdTree<PointOS1>::Ptr tree(new pcl::search::KdTree<PointOS1>);
+    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
     tree->setInputCloud(cloud_filtered);
 
     std::vector<pcl::PointIndices> cluster_indices;
-    pcl::EuclideanClusterExtraction<PointOS1> ec;
+    pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
     ec.setClusterTolerance(params.cluster_tol); // 8cm (affects resulting cluster size)
     ec.setMinClusterSize(params.cluster_min);   // minimum number of points
     ec.setMaxClusterSize(params.cluster_max);   // maximum number of points
@@ -333,7 +340,7 @@ void ClusterDetector::cloud_cluster_cb(
     ec.setInputCloud(cloud_filtered);
     ec.extract(cluster_indices);
 
-    pcl::PointCloud<PointOS1>::Ptr clustered_cloud(new pcl::PointCloud<PointOS1>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr clustered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
     // vector to store marker points
     std::vector<pcl::PointXYZ> marker_points;
@@ -358,7 +365,7 @@ void ClusterDetector::cloud_cluster_cb(
     // outer loop goes through all the clusters we found
     for (auto it = cluster_indices.begin(); it != cluster_indices.end(); ++it)
     {
-        pcl::PointCloud<PointOS1>::Ptr cloud_cluster(new pcl::PointCloud<PointOS1>);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZ>);
 
         for (const int &index : it->indices)
             cloud_cluster->points.push_back(cloud_filtered->points[index]);
@@ -374,11 +381,11 @@ void ClusterDetector::cloud_cluster_cb(
         // compute distance to cluster, before cylindrical reconsturction
         double d = sqrt(centre.x * centre.x + centre.y * centre.y + centre.z * centre.z);
 
-        // TODO: cylindrical reconsturction BEFORE rule based filter
         // perform cylindrical reconstruction from ground points
-        pcl::ConditionAnd<PointOS1>::Ptr cyl_cond(new pcl::ConditionAnd<PointOS1>());
+        pcl::ConditionAnd<pcl::PointXYZ>::Ptr cyl_cond(new pcl::ConditionAnd<pcl::PointXYZ>());
 
         Eigen::Matrix3f cylinderMatrix;
+        cylinderMatrix.setZero(3, 3);
         cylinderMatrix(0, 0) = 1.0;
         cylinderMatrix(1, 1) = 1.0;
 
@@ -388,19 +395,20 @@ void ClusterDetector::cloud_cluster_cb(
         double radius = params.reconst_radius;
         float cylinderScalar = -(radius * radius) + centre.x * centre.x + centre.y * centre.y;
 
-        pcl::TfQuadraticXYZComparison<PointOS1>::Ptr cyl_comp(new pcl::TfQuadraticXYZComparison<PointOS1>(pcl::ComparisonOps::LE, cylinderMatrix, cylinderPosition, cylinderScalar));
+        pcl::TfQuadraticXYZComparison<pcl::PointXYZ>::Ptr
+            cyl_comp(new pcl::TfQuadraticXYZComparison<pcl::PointXYZ>(
+                pcl::ComparisonOps::LE, cylinderMatrix, cylinderPosition, cylinderScalar));
 
         cyl_cond->addComparison(cyl_comp);
-        pcl::PointCloud<PointOS1> recovered;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr recovered(new pcl::PointCloud<pcl::PointXYZ>);
 
         // build and apply filter
         condrem.setCondition(cyl_cond);
         condrem.setInputCloud(input_ground);
         condrem.setKeepOrganized(false);
-        condrem.filter(recovered); // ? Main issue lies in the data that is recovered ?
-        // ! The problem is still here, but does not always occur
+        condrem.filter(*recovered);
 
-        *cloud_cluster += recovered;
+        *cloud_cluster += *recovered;
 
         // apply rule based filter
         double filter_factor = params.filter_factor; // used for tuning
@@ -423,7 +431,7 @@ void ClusterDetector::cloud_cluster_cb(
         // add to marker points
         marker_points.push_back(centre);
 
-        // ! collect data for lidar image classification
+        // ! enable to collect data for lidar image classification
         // CloudToImage(*cloud_cluster, obstacles_msg->header, intensity_cv_ptr,
         //              params.experiment_no, frame_count, cone_count, params.cone_colour);
         cone_count++;
@@ -433,7 +441,7 @@ void ClusterDetector::cloud_cluster_cb(
         img_crops.push_back(crop);
 
         // join each cloud cluster into one combined cluster (visualisation)
-        *clustered_cloud = recovered;
+        *clustered_cloud += *recovered;
 
         // DEBUG: print info about cluster size
         // std::cout << " PointCloud representing the Cluster: " << cloud_cluster->points.size() << " data points." << std::endl;
@@ -445,7 +453,11 @@ void ClusterDetector::cloud_cluster_cb(
     frame_count++;
 
     // ! run inference on all img crops
-    std::vector<int> clf_res = lidarImgClassifier_->doInference(img_crops);
+    std::vector<int> clf_res;
+    if (img_crops.size() > 0)
+    {
+        clf_res = lidarImgClassifier_->doInference(img_crops);
+    }
 
     // prepare marker array
     visualization_msgs::MarkerArray marker_array_msg;
@@ -453,9 +465,9 @@ void ClusterDetector::cloud_cluster_cb(
     for (int i = 0; i < marker_points.size(); ++i)
     {
         set_marker_properties(
-            &marker_array_msg.markers[i], 
-            marker_points[i], 
-            i, 
+            &marker_array_msg.markers[i],
+            marker_points[i],
+            i,
             clf_res[i],
             input->header.frame_id);
     }
@@ -470,9 +482,12 @@ void ClusterDetector::cloud_cluster_cb(
         cone_msg.y.push_back(marker_points[i].y);
 
         // ! add classifier results
-        if (clf_res[i] == 0) {
+        if (clf_res[i] == 0)
+        {
             cone_msg.colour.push_back("Blue");
-        } else {
+        }
+        else
+        {
             cone_msg.colour.push_back("Yellow");
         }
         // cone_msg.colour.push_back("na");
@@ -551,7 +566,6 @@ void ClusterDetector::set_marker_properties(
         marker->color.g = 1.0;
         marker->color.b = 0.0;
     }
-    
 
     marker->lifetime = ros::Duration(0.5);
 }

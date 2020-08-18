@@ -6,12 +6,6 @@
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 
-#include <tf2/convert.h>
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2_ros/transform_listener.h>
-#include <geometry_msgs/TransformStamped.h>
-#include <geometry_msgs/Twist.h>
-
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/fill_image.h>
@@ -24,7 +18,6 @@
 #include <limits>
 
 // PCL specific includes
-#define PCL_NO_PRECOMPILE
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/conversions.h>
 #include <pcl_ros/transforms.h>
@@ -37,20 +30,11 @@
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
 
-#include <pcl/point_types.h>
-#include <pcl/impl/point_types.hpp>
-
 #include <pcl/segmentation/extract_clusters.h>
-#include <pcl/segmentation/impl/extract_clusters.hpp>
-
 #include <pcl/kdtree/kdtree_flann.h>
-#include <pcl/kdtree/impl/kdtree_flann.hpp>
 #include <pcl/filters/conditional_removal.h>
-#include <pcl/filters/impl/conditional_removal.hpp>
 #include <pcl/filters/filter.h>
-#include <pcl/filters/impl/filter.hpp>
 
-#include "ouster_ros/point_os1.h"
 #include "lidarImgClassifier.h"
 
 struct ClusterParams
@@ -126,9 +110,9 @@ public:
         const sensor_msgs::ImageConstPtr &intensity_msg);
 
 private:
-    cv::Rect cloud_to_bbox(const pcl::PointCloud<ouster_ros::OS1::PointOS1> &cluster);
+    cv::Rect cloud_to_bbox(const pcl::PointCloud<pcl::PointXYZ> &cluster);
     cv::Mat cloud_to_img(
-        const pcl::PointCloud<ouster_ros::OS1::PointOS1> &cluster,
+        const pcl::PointCloud<pcl::PointXYZ> &cluster,
         const cv_bridge::CvImagePtr &cv_ptr);
 
     int num_expected_points(const pcl::PointXYZ &centre);
