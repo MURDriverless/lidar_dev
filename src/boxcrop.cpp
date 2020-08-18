@@ -36,10 +36,10 @@ void cloud_cropbox_cb(const sensor_msgs::PointCloud2ConstPtr &cloud_msg)
     // parameters chosen for 2020-04-13-15-31-43.bag
 
 	// ! Orientation 1 (cone in front of lidar)
-	double minX = -5.5;
+	double minX = -3.5;
 	double maxX = 0.0;
-	double minY = -0.5;
-	double maxY = 0.5;
+	double minY = -0.8;
+	double maxY = 0.8;
 	double minZ = -1.0;
 	double maxZ = 1.0;
 

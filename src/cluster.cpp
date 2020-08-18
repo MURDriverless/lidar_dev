@@ -53,12 +53,110 @@ int ClusterDetector::num_expected_points(const pcl::PointXYZ &centre)
 }
 
 /**
+ * cloud_to_bbox
+ * Compute the approximate bounding box using the provided cluster point cloud.
+ * The input cluster should include points from cylindrical reconstruction.
+ * @param cluster point cloud representing a traffic cone
+ * @return rectangle specifying where the bounding box should be
+ */
+cv::Rect ClusterDetector::cloud_to_bbox(const pcl::PointCloud<PointOS1> &cluster)
+{
+    int row_scale = params.lidar_vert_res; // lidar vertical resolution
+    int col_scale = params.lidar_hori_res; // lidar horizontal resolution
+    float fov_vert = 33.2 / 180.0 * M_PI;  // 33.2 deg
+    float fov_up = fov_vert / 2;
+    float fov_down = fov_vert / 2;
+    int u_min = INT_MAX;
+    int u_max = INT_MIN;
+    int v_min = INT_MAX;
+    int v_max = INT_MIN;
+
+    // loop through each point in the cloud
+    for (int i = 0; i < cluster.size(); ++i)
+    {
+        // rotate cloud by 180
+        float x = -cluster[i].x;
+        float y = -cluster[i].y;
+        float z = cluster[i].z;
+
+        float r = sqrt(x * x + y * y + z * z);
+        float yaw = atan2(y, x);
+        float pitch = asin(z / r);
+
+        // image coordinate rows
+        int u = row_scale * (1 - (pitch + fov_down) / fov_vert);
+        // image coordinate columns
+        int v = col_scale * 0.5 * ((yaw / M_PI) + 1);
+
+        if (u < u_min)
+        {
+            u_min = u;
+        }
+        if (u > u_max)
+        {
+            u_max = u;
+        }
+        if (v < v_min)
+        {
+            v_min = v;
+        }
+        if (v > v_max)
+        {
+            v_max = v;
+        }
+    }
+
+    // DEBUG print
+    // std::cout << "Printing umin, umax, vmin, vmax: " << std::endl;
+    // std::cout << u_min << " " << u_max << " " << col_scale - v_min << " " << col_scale - v_max << std::endl;
+
+    // TODO: fix magic offset static (credits to Andrew Huang)
+    int magic_offset = params.magic_offset;
+    int left = col_scale - v_max - magic_offset;
+    int right = col_scale - v_min - magic_offset;
+    int top = u_min;
+    int bot = u_max;
+
+    // expand bounding box to capture extra area
+    float expand_factor = 0.1;
+    int width = right - left;
+    int height = bot - top;
+    int w_expand = width * expand_factor;
+    int h_expand = height * expand_factor;
+    left = std::max(left - w_expand, 0);
+    right = std::min(right + w_expand, col_scale);
+    top = std::max(top - h_expand, 0);
+    bot = std::min(bot + h_expand, row_scale);
+
+    cv::Rect bbox(cv::Point(left, top), cv::Point(right, bot));
+    return bbox;
+}
+
+/**
+ * cloud_to_img
+ * Finds the approximate bounding box, and then generate an image crop.
+ */
+cv::Mat ClusterDetector::cloud_to_img(
+    const pcl::PointCloud<PointOS1> &cluster,
+    const cv_bridge::CvImagePtr &cv_ptr)
+{
+    cv::Rect bbox = cloud_to_bbox(cluster);
+    cv::Mat roi = cv_ptr->image(bbox);
+    
+    // draw bounding box for visualisation
+    cv::rectangle(cv_ptr->image, bbox, cv::Scalar(0, 255, 0));
+
+    return roi;
+}
+
+/**
  * CloudToImage
  * converts a pointcloud cluster to a spherical projection intensity image.
- * @param cluster point cloud to be converted to an image
+ * @param cluster point cloud used to approximate bounding box
  * @return single channel intensity image
  * 
  * TODO: grab OS1 row/col scales from sensor instead of hard coding
+ * TODO: refactor this data collection routine into new ClusterDetector class
  */
 void CloudToImage(
     const pcl::PointCloud<PointOS1> &cluster,
@@ -73,6 +171,7 @@ void CloudToImage(
     int col_scale = params.lidar_hori_res; // lidar horizontal resolution
 
     // TODO: grab fov from lidar config
+    // approximate bounding box projection using spherical projection
     // using os1 gen1 specs
     // see https://ouster.com/products/os1-lidar-sensor/
     float fov_vert = 33.2 / 180.0 * M_PI; // 45 deg
@@ -89,8 +188,7 @@ void CloudToImage(
     // loop through each point in the cloud
     for (int i = 0; i < cluster.size(); ++i)
     {
-
-        // ? try rotate cloud by 180
+        // rotate cloud by 180
         float x = -cluster[i].x;
         float y = -cluster[i].y;
         float z = cluster[i].z;
@@ -246,6 +344,7 @@ void ClusterDetector::cloud_cluster_cb(
     cv_bridge::CvImagePtr intensity_cv_ptr;
     static int frame_count = 0;
     int cone_count = 0;
+    std::vector<cv::Mat> img_crops;
 
     try
     {
@@ -292,15 +391,16 @@ void ClusterDetector::cloud_cluster_cb(
         pcl::TfQuadraticXYZComparison<PointOS1>::Ptr cyl_comp(new pcl::TfQuadraticXYZComparison<PointOS1>(pcl::ComparisonOps::LE, cylinderMatrix, cylinderPosition, cylinderScalar));
 
         cyl_cond->addComparison(cyl_comp);
-        pcl::PointCloud<PointOS1>::Ptr recovered(new pcl::PointCloud<PointOS1>);
+        pcl::PointCloud<PointOS1> recovered;
 
         // build and apply filter
         condrem.setCondition(cyl_cond);
         condrem.setInputCloud(input_ground);
         condrem.setKeepOrganized(false);
-        condrem.filter(*recovered); // ? Main issue lies in the data that is recovered ?
+        condrem.filter(recovered); // ? Main issue lies in the data that is recovered ?
+        // ! The problem is still here, but does not always occur
 
-        *cloud_cluster += *recovered;
+        *cloud_cluster += recovered;
 
         // apply rule based filter
         double filter_factor = params.filter_factor; // used for tuning
@@ -316,7 +416,6 @@ void ClusterDetector::cloud_cluster_cb(
         }
 
         std::cout << "[confirmed] Printing x, y, r   " << centre.x << " " << centre.y << " " << radius << std::endl;
-
         std::cout << "[confirmed] NumExpectedPoints = " << filter_factor * num_expected_points(centre) << std::endl;
         std::cout << "[confirmed] num actual points = " << cloud_cluster->size() << std::endl;
         std::cout << "[confirmed] distance to cone  = " << d << std::endl;
@@ -325,12 +424,16 @@ void ClusterDetector::cloud_cluster_cb(
         marker_points.push_back(centre);
 
         // ! collect data for lidar image classification
-        CloudToImage(*cloud_cluster, obstacles_msg->header, intensity_cv_ptr,
-                     params.experiment_no, frame_count, cone_count, params.cone_colour);
+        // CloudToImage(*cloud_cluster, obstacles_msg->header, intensity_cv_ptr,
+        //              params.experiment_no, frame_count, cone_count, params.cone_colour);
         cone_count++;
 
+        // ! store image crops for classifier
+        cv::Mat crop = cloud_to_img(*cloud_cluster, intensity_cv_ptr);
+        img_crops.push_back(crop);
+
         // join each cloud cluster into one combined cluster (visualisation)
-        *clustered_cloud = *recovered;
+        *clustered_cloud = recovered;
 
         // DEBUG: print info about cluster size
         // std::cout << " PointCloud representing the Cluster: " << cloud_cluster->points.size() << " data points." << std::endl;
@@ -341,12 +444,20 @@ void ClusterDetector::cloud_cluster_cb(
 
     frame_count++;
 
+    // ! run inference on all img crops
+    std::vector<int> clf_res = lidarImgClassifier_->doInference(img_crops);
+
     // prepare marker array
     visualization_msgs::MarkerArray marker_array_msg;
     marker_array_msg.markers.resize(marker_points.size());
     for (int i = 0; i < marker_points.size(); ++i)
     {
-        set_marker_properties(&marker_array_msg.markers[i], marker_points[i], i, input->header.frame_id);
+        set_marker_properties(
+            &marker_array_msg.markers[i], 
+            marker_points[i], 
+            i, 
+            clf_res[i],
+            input->header.frame_id);
     }
 
     std::cout << "NUM OF MARKERS = " << marker_points.size() << std::endl;
@@ -357,7 +468,14 @@ void ClusterDetector::cloud_cluster_cb(
     {
         cone_msg.x.push_back(marker_points[i].x);
         cone_msg.y.push_back(marker_points[i].y);
-        cone_msg.colour.push_back("na");
+
+        // ! add classifier results
+        if (clf_res[i] == 0) {
+            cone_msg.colour.push_back("Blue");
+        } else {
+            cone_msg.colour.push_back("Yellow");
+        }
+        // cone_msg.colour.push_back("na");
     }
     cone_msg.frame_id = input->header.frame_id;
 
@@ -384,11 +502,15 @@ void ClusterDetector::cloud_cluster_cb(
     cv::waitKey(30);
 }
 
-// function to set the marker properties
+/**
+ * set_marker_properties
+ * Populates the marker properties
+ */
 void ClusterDetector::set_marker_properties(
     visualization_msgs::Marker *marker,
     pcl::PointXYZ centre,
     int n,
+    int cone_type,
     std::string frame_id)
 {
     marker->header.frame_id = frame_id;
@@ -413,9 +535,23 @@ void ClusterDetector::set_marker_properties(
 
     // alpha and RGB settings
     marker->color.a = params.marker_alpha;
-    marker->color.r = params.marker_r;
-    marker->color.g = params.marker_g;
-    marker->color.b = params.marker_b;
+    // marker->color.r = params.marker_r;
+    // marker->color.g = params.marker_g;
+    // marker->color.b = params.marker_b;
+
+    if (cone_type == 0) // blue
+    {
+        marker->color.r = 0.0;
+        marker->color.g = 0.0;
+        marker->color.b = 1.0;
+    }
+    else
+    {
+        marker->color.r = 1.0;
+        marker->color.g = 1.0;
+        marker->color.b = 0.0;
+    }
+    
 
     marker->lifetime = ros::Duration(0.5);
 }

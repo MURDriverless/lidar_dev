@@ -126,11 +126,17 @@ public:
         const sensor_msgs::ImageConstPtr &intensity_msg);
 
 private:
+    cv::Rect cloud_to_bbox(const pcl::PointCloud<ouster_ros::OS1::PointOS1> &cluster);
+    cv::Mat cloud_to_img(
+        const pcl::PointCloud<ouster_ros::OS1::PointOS1> &cluster,
+        const cv_bridge::CvImagePtr &cv_ptr);
+
     int num_expected_points(const pcl::PointXYZ &centre);
     void set_marker_properties(
         visualization_msgs::Marker *marker,
         pcl::PointXYZ centre,
         int n,
+        int cone_type,
         std::string frame_id);
 
     std::unique_ptr<LidarImgClassifier> lidarImgClassifier_;
