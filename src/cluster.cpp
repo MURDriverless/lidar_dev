@@ -49,7 +49,7 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
     pcl::fromPCLPointCloud2(*cloud, *input);
     pcl::fromPCLPointCloud2(*ground, *input_ground);
 
-    ROS_INFO("There are %ld points in input point cloud \n", input->size());
+    // ROS_INFO("There are %ld points in input point cloud \n", input->size());
 
     // Use a conditional filter to remove points at the origin (0, 0, 0)
     pcl::ConditionOr<pcl::PointXYZ>::Ptr range_cond(new pcl::ConditionOr<pcl::PointXYZ>());
@@ -70,7 +70,7 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
     // apply filter
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZ>);
     condrem.filter(*cloud_filtered);
-    std::cout << "PointCloud after conditional filtering has: " << cloud_filtered->points.size() << " data points." << std::endl;
+    // std::cout << "PointCloud after conditional filtering has: " << cloud_filtered->points.size() << " data points." << std::endl;
 
     // create KdTree object
     pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
@@ -108,9 +108,9 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
 
         double d = sqrt(centre.x * centre.x + centre.y * centre.y + centre.z * centre.z);
         double filter_factor = 0.5; // used for tuning
-        std::cout << "[potential] num_expected_points = " << filter_factor * num_expected_points(centre) << std::endl;
-        std::cout << "[potential] num actual points   = " << cloud_cluster->size() << std::endl;
-        std::cout << "[potential] distance to cone    = " << d << std::endl;
+        // std::cout << "[potential] num_expected_points = " << filter_factor * num_expected_points(centre) << std::endl;
+        // std::cout << "[potential] num actual points   = " << cloud_cluster->size() << std::endl;
+        // std::cout << "[potential] distance to cone    = " << d << std::endl;
 
         // skip processing step if there is insufficient points
         int expected = num_expected_points(centre);
@@ -118,9 +118,9 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
             continue;
         }
 
-        std::cout << "[confirmed] num_expected_points = " << filter_factor * num_expected_points(centre) << std::endl;
-        std::cout << "[confirmed] num actual points   = " << cloud_cluster->size() << std::endl;
-        std::cout << "[confirmed] distance to cone    = " << d << std::endl;
+        // std::cout << "[confirmed] num_expected_points = " << filter_factor * num_expected_points(centre) << std::endl;
+        // std::cout << "[confirmed] num actual points   = " << cloud_cluster->size() << std::endl;
+        // std::cout << "[confirmed] distance to cone    = " << d << std::endl;
 
         // add to marker points
         marker_points.push_back(centre);
@@ -165,14 +165,14 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
         set_marker_properties(&marker_array_msg.markers[i], marker_points[i], i, ground->header.frame_id);
     }
 
-    std::cout << "NUM OF MARKERS = " << marker_points.size() << std::endl;
+    // std::cout << "NUM OF MARKERS = " << marker_points.size() << std::endl;
 
     // prepare results msg (in cone_msg format)
     mur_common::cone_msg cone_msg;
     for (int i = 0; i < marker_points.size(); ++i) {
         cone_msg.x.push_back(marker_points[i].x);
         cone_msg.y.push_back(marker_points[i].y);
-        cone_msg.colour.push_back("na");
+        cone_msg.colour.push_back(UNKNOWN_STR);
     }
     cone_msg.frame_id = ground->header.frame_id;
 
@@ -182,7 +182,7 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
     output.header.frame_id = ground->header.frame_id;
     output.header.stamp = ros::Time::now();
 
-    ROS_INFO("About to publish cluster output \n");
+    // ROS_INFO("About to publish cluster output \n");
 
     // publish the output data
     pub.publish(output);
@@ -192,7 +192,7 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
     // measure and print runtime performance
     end_ = ros::WallTime::now();
     double execution_time = (end_ - start_).toNSec() * 1e-6;
-    ROS_INFO_STREAM("Exectution time (ms): " << execution_time);
+    // ROS_INFO_STREAM("Exectution time (ms): " << execution_time);
 }
 
 // function to set the marker properties

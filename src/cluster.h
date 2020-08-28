@@ -29,6 +29,11 @@
 #include <pcl/filters/conditional_removal.h>
 #include <pcl/filters/filter.h>
 
+#define BLUE_STR "BLUE"
+#define ORANGE_STR "ORANGE"
+#define YELLOW_STR "YELLOW"
+#define UNKNOWN_STR "na"
+
 struct ClusterParams {
     ClusterParams():
         cluster_tol(0.08),
