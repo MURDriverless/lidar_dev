@@ -128,7 +128,7 @@ void cloud_cluster_cb(const sensor_msgs::PointCloud2ConstPtr &obstacles_msg, con
         // cylindrical reconstruction from ground points
         pcl::ConditionAnd<pcl::PointXYZ>::Ptr cyl_cond (new pcl::ConditionAnd<pcl::PointXYZ> ());
 
-        Eigen::Matrix3f cylinderMatrix;
+        Eigen::Matrix3f cylinderMatrix = Eigen::Matrix3f::Zero();
         cylinderMatrix(0,0) = 1.0;
         cylinderMatrix(1,1) = 1.0;
 
