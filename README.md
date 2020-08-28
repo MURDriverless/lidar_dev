@@ -50,7 +50,7 @@ sudo apt install libgoogle-glog-dev
 
 For indoor testing with `2020-04-13-15-31-43.bag` change the `sensor_height` to `0.45` in the `segmentation_params.yaml`.
 
-The config file is located at 
+The config file is located at
 
 ```
 catkin_ws/src/linefit_ground_segmentation/linefit_ground_segmentation_ros/launch/segmentation_params.yaml
@@ -65,18 +65,12 @@ References for TensorRT related implementation.
 
 ## Todo
 
-- [ ] Apply transform to point cloud following example below.
-https://answers.ros.org/question/291735/pointcloud2-transform-cpython/
-https://github.com/lucasw/transform_point_cloud/blob/master/src/transform_point_cloud.cpp
-
-Edit: ended up just applying basic rotation matrix to the `x, y, z` points in cluster for 180 deg rotation about the z-axis. That is, multiplying `x, y` by -1.
-
-- [ ] Fix issue with cylindrical volume reconstruction
-  - [ ] Try point lidar with cable out facing the cone, to see if the problem still comes up
-  - [ ] Once all lidar image pipeline is done, we can revert back to only PointXYZ, maybe this will fix the issue?
-- [ ] Debug horizontal offset problem in cropping lidar image, align lidar with traffic cone and see if caluclated `u, v` values are accurate
-  - [x] Try to see if the horizontal offset is "constant" at different fix orientation as per Andrew Huang's suggestion. 
+- [x] Apply basic rotation to point cloud to correct for starting orientation.
+- [x] Fix issue with cylindrical volume reconstruction
+- [x] Debug horizontal offset problem in cropping lidar image, align lidar with traffic cone and see if caluclated `u, v` values are accurate
+  - [x] Try to see if the horizontal offset is "constant" at different fix orientation as per Andrew Huang's suggestion.
   - [x] Implement temporary work around with `magic_offset`.
   - [x] Test if the offset works for `1024 x 64` mode
-- [ ] Implement lidar image saving feature, resizing all lidar image crops to `32 x 32`
+- [x] Implement lidar image saving feature, resizing all lidar image crops to `32 x 32`
 - [ ] Make a fork for the official `ouster_example` for the purpose of custom `img_node`
+- [ ] Update readme with data collection instructions.

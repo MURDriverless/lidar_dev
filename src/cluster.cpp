@@ -76,6 +76,7 @@ cv::Rect ClusterDetector::cloud_to_bbox(const pcl::PointCloud<pcl::PointXYZ> &cl
         float z = cluster[i].z;
 
         float r = sqrt(x * x + y * y + z * z);
+        // angles in radians
         float yaw = atan2(y, x);
         float pitch = asin(z / r);
 
@@ -84,22 +85,10 @@ cv::Rect ClusterDetector::cloud_to_bbox(const pcl::PointCloud<pcl::PointXYZ> &cl
         // image coordinate columns
         int v = col_scale * 0.5 * ((yaw / M_PI) + 1);
 
-        if (u < u_min)
-        {
-            u_min = u;
-        }
-        if (u > u_max)
-        {
-            u_max = u;
-        }
-        if (v < v_min)
-        {
-            v_min = v;
-        }
-        if (v > v_max)
-        {
-            v_max = v;
-        }
+        u_min = std::min(u, u_min);
+        u_max = std::max(u, u_max);
+        v_min = std::min(v, v_min);
+        v_max = std::max(v, v_max);
     }
 
     // DEBUG print
@@ -151,7 +140,8 @@ cv::Mat ClusterDetector::cloud_to_img(
 
 /**
  * CloudToImage
- * converts a pointcloud cluster to a spherical projection intensity image.
+ * Converts a pointcloud cluster to a spherical projection intensity image.
+ * Used to collect data for training intensity image classifier.
  * @param cluster point cloud used to approximate bounding box
  * @return single channel intensity image
  *
@@ -194,6 +184,7 @@ void CloudToImage(
         float z = cluster[i].z;
 
         float r = sqrt(x * x + y * y + z * z);
+        // angles in radians
         float yaw = atan2(y, x);
         float pitch = asin(z / r);
 
@@ -202,22 +193,10 @@ void CloudToImage(
         // image coordinate columns
         int v = col_scale * 0.5 * ((yaw / M_PI) + 1);
 
-        if (u < u_min)
-        {
-            u_min = u;
-        }
-        if (u > u_max)
-        {
-            u_max = u;
-        }
-        if (v < v_min)
-        {
-            v_min = v;
-        }
-        if (v > v_max)
-        {
-            v_max = v;
-        }
+        u_min = std::min(u, u_min);
+        u_max = std::max(u, u_max);
+        v_min = std::min(v, v_min);
+        v_max = std::max(v, v_max);
     }
 
     // DEBUG print
