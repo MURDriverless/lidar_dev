@@ -91,6 +91,9 @@ target_link_libraries(boxcrop_node ${catkin_LIBRARIES})
 add_executable(carcrop_node src/carcrop.cpp)
 target_link_libraries(carcrop_node ${catkin_LIBRARIES})
 
+add_executable(lidar_tf_node src/transform_pc.cpp)
+target_link_libraries(lidar_tf_node ${catkin_LIBRARIES})
+
 add_executable(cluster_node src/cluster.cpp)
 target_link_libraries(cluster_node classifier ${catkin_LIBRARIES} ${OpenCV_LIBS})
 

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+  <!-- run the transform_point_cloud node -->
+  <node name="lidar_tf" pkg="lidar_dev" type="lidar_tf_node" output="screen">
+  </node>
+
+  <!-- define the static frames which we would like to experiment with -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="static_frame1"
+      args="1 2 2 0.1 0.2 0.3 os1_sensor frame1" />
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="static_frame2"
+      args="0 0 -3.0 0.0 0.0 0.25 frame1 frame2" />
+
+  <node name="rviz" pkg="rviz" type="rviz"
+      output="screen">
+  </node>
+
+</launch>
