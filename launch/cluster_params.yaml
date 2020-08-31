@@ -22,3 +22,6 @@ magic_offset: 9         # temporary measure to align lidar image bounding box
 experiment_no: 6              # experiment number
 cone_colour: "y"              # y for yellow, b for blue
 save_path: "/tmp/lidar_imgs/" # path where lidar image crops are saved to
+
+## simulation mode
+sim_mode: true

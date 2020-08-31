@@ -5,10 +5,6 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_sensor_msgs/tf2_sensor_msgs.h>
 
-// ros::Publisher pub;
-// tf2_ros::Buffer tf_buffer;
-// tf2_ros::TransformListener tf_listener;
-
 class TransformPointCloud
 {
     ros::NodeHandle nh_;

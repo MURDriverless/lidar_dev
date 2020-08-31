@@ -5,7 +5,13 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC -Wno-deprecated-declarations -Wno-unused-variable")
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
+
+## Gazebo
+find_package(gazebo REQUIRED)
+include_directories(${GAZEBO_INCLUDE_DIRS})
+link_directories(${GAZEBO_LIBRARY_DIRS})
+# list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
 
 find_package(OpenCV REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DOPENCV")
@@ -93,6 +99,9 @@ target_link_libraries(carcrop_node ${catkin_LIBRARIES})
 
 add_executable(lidar_tf_node src/transform_pc.cpp)
 target_link_libraries(lidar_tf_node ${catkin_LIBRARIES})
+
+add_executable(conepose_node src/conepose.cpp)
+target_link_libraries(conepose_node ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 
 add_executable(cluster_node src/cluster.cpp)
 target_link_libraries(cluster_node classifier ${catkin_LIBRARIES} ${OpenCV_LIBS})

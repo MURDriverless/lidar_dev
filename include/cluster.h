@@ -56,7 +56,8 @@ struct ClusterParams
                       magic_offset(9),
                       experiment_no(0),
                       cone_colour("b"),
-                      save_path("/tmp/lidar_imgs/") {}
+                      save_path("/tmp/lidar_imgs/"),
+                      sim_mode(false) {}
 
     // cluster tolerance
     double cluster_tol;
@@ -98,6 +99,9 @@ struct ClusterParams
     std::string cone_colour;
     // save path for lidar image crops
     std::string save_path;
+
+    // simulation mode boolean
+    bool sim_mode;
 };
 
 class ClusterDetector
@@ -106,8 +110,7 @@ public:
     ClusterDetector(std::string clf_onnx, std::string clf_trt);
     void cloud_cluster_cb(
         const sensor_msgs::PointCloud2ConstPtr &obstacles_msg,
-        const sensor_msgs::PointCloud2ConstPtr &ground_msg,
-        const sensor_msgs::ImageConstPtr &intensity_msg);
+        const sensor_msgs::PointCloud2ConstPtr &ground_msg);
 
 private:
     cv::Rect cloud_to_bbox(const pcl::PointCloud<pcl::PointXYZ> &cluster);

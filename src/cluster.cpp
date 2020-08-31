@@ -3,6 +3,7 @@
 
 ros::Publisher pub;                 // publisher for all reconstructed cluster clouds
 ros::Publisher markers_pub;         // publisher for cylinder markers
+ros::Publisher cones_pub;           // publisher for cones point cloud
 ros::Publisher results_pub;         // publisher for cone_msg
 ros::Publisher intensity_image_pub; // publisher for intensity images
 
@@ -15,13 +16,13 @@ ClusterDetector::ClusterDetector(std::string clf_onnx, std::string clf_trt)
     clfImgH = 32;
     maxBatch = 50;
 
-    lidarImgClassifier_.reset(
-        new LidarImgClassifier(
-            clf_onnx,
-            clf_trt,
-            clfImgW,
-            clfImgH,
-            maxBatch));
+    // lidarImgClassifier_.reset(
+    //     new LidarImgClassifier(
+    //         clf_onnx,
+    //         clf_trt,
+    //         clfImgW,
+    //         clfImgH,
+    //         maxBatch));
 }
 
 /**
@@ -265,8 +266,7 @@ void CloudToImage(
  */
 void ClusterDetector::cloud_cluster_cb(
     const sensor_msgs::PointCloud2ConstPtr &obstacles_msg,
-    const sensor_msgs::PointCloud2ConstPtr &ground_msg,
-    const sensor_msgs::ImageConstPtr &intensity_msg)
+    const sensor_msgs::PointCloud2ConstPtr &ground_msg)
 {
     // time callback run time as performance measure
     ros::WallTime start_, end_;
@@ -320,6 +320,7 @@ void ClusterDetector::cloud_cluster_cb(
     ec.extract(cluster_indices);
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr clustered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ> cones_cloud;
 
     // vector to store marker points
     std::vector<pcl::PointXYZ> marker_points;
@@ -327,19 +328,20 @@ void ClusterDetector::cloud_cluster_cb(
     std::cout << "Num of clusters" << cluster_indices.size() << std::endl;
 
     // copy intensity image here, so that multiple bbox can be drawn
-    cv_bridge::CvImagePtr intensity_cv_ptr;
-    static int frame_count = 0;
-    int cone_count = 0;
-    std::vector<cv::Mat> img_crops;
+    // ! disable for simulation
+    // cv_bridge::CvImagePtr intensity_cv_ptr;
+    // static int frame_count = 0;
+    // int cone_count = 0;
+    // std::vector<cv::Mat> img_crops;
 
-    try
-    {
-        intensity_cv_ptr = cv_bridge::toCvCopy(intensity_msg, sensor_msgs::image_encodings::MONO8);
-    }
-    catch (cv_bridge::Exception &e)
-    {
-        ROS_ERROR("Could not convert from '%s' to 'mono8'.", intensity_msg->encoding.c_str());
-    }
+    // try
+    // {
+    //     intensity_cv_ptr = cv_bridge::toCvCopy(intensity_msg, sensor_msgs::image_encodings::MONO8);
+    // }
+    // catch (cv_bridge::Exception &e)
+    // {
+    //     ROS_ERROR("Could not convert from '%s' to 'mono8'.", intensity_msg->encoding.c_str());
+    // }
 
     // outer loop goes through all the clusters we found
     for (auto it = cluster_indices.begin(); it != cluster_indices.end(); ++it)
@@ -409,15 +411,16 @@ void ClusterDetector::cloud_cluster_cb(
 
         // add to marker points
         marker_points.push_back(centre);
+        cones_cloud.push_back(centre);
 
         // ! enable to collect data for lidar image classification
         // CloudToImage(*cloud_cluster, obstacles_msg->header, intensity_cv_ptr,
         //              params.experiment_no, frame_count, cone_count, params.cone_colour);
-        cone_count++;
+        // cone_count++;
 
         // ! store image crops for classifier
-        cv::Mat crop = cloud_to_img(*cloud_cluster, intensity_cv_ptr);
-        img_crops.push_back(crop);
+        // cv::Mat crop = cloud_to_img(*cloud_cluster, intensity_cv_ptr);
+        // img_crops.push_back(crop);
 
         // join each cloud cluster into one combined cluster (visualisation)
         *clustered_cloud += *recovered;
@@ -429,14 +432,14 @@ void ClusterDetector::cloud_cluster_cb(
         // break;
     }
 
-    frame_count++;
+    // frame_count++;
 
     // ! run inference on all img crops
-    std::vector<int> clf_res;
-    if (img_crops.size() > 0)
-    {
-        clf_res = lidarImgClassifier_->doInference(img_crops);
-    }
+    // std::vector<int> clf_res;
+    // if (img_crops.size() > 0)
+    // {
+    //     clf_res = lidarImgClassifier_->doInference(img_crops);
+    // }
 
     // prepare marker array
     visualization_msgs::MarkerArray marker_array_msg;
@@ -447,7 +450,7 @@ void ClusterDetector::cloud_cluster_cb(
             &marker_array_msg.markers[i],
             marker_points[i],
             i,
-            clf_res[i],
+            0, //clf_res[i]
             input->header.frame_id);
     }
 
@@ -459,17 +462,16 @@ void ClusterDetector::cloud_cluster_cb(
     {
         cone_msg.x.push_back(marker_points[i].x);
         cone_msg.y.push_back(marker_points[i].y);
-
         // ! add classifier results
-        if (clf_res[i] == 0)
-        {
-            cone_msg.colour.push_back("Blue");
-        }
-        else
-        {
-            cone_msg.colour.push_back("Yellow");
-        }
-        // cone_msg.colour.push_back("na");
+        // if (clf_res[i] == 0)
+        // {
+        //     cone_msg.colour.push_back("Blue");
+        // }
+        // else
+        // {
+        //     cone_msg.colour.push_back("Yellow");
+        // }
+        cone_msg.colour.push_back("na");
     }
     cone_msg.frame_id = input->header.frame_id;
 
@@ -479,21 +481,29 @@ void ClusterDetector::cloud_cluster_cb(
     output.header.frame_id = input->header.frame_id;
     output.header.stamp = ros::Time::now();
 
+    // publish cone centres as point cloud
+    sensor_msgs::PointCloud2 cones_output;
+    pcl::toROSMsg(cones_cloud, cones_output);
+    cones_output.header.frame_id = input->header.frame_id;
+    cones_output.header.stamp = ros::Time::now();
+
     ROS_INFO("About to publish cluster output \n");
 
     // publish the output data
     pub.publish(output);
     markers_pub.publish(marker_array_msg);
     results_pub.publish(cone_msg);
+    cones_pub.publish(cones_output);
 
     // measure and print runtime performance
     end_ = ros::WallTime::now();
     double execution_time = (end_ - start_).toNSec() * 1e-6;
     ROS_INFO_STREAM("Exectution time (ms): " << execution_time);
 
+
     // ! display intensity image
-    cv::imshow("view", intensity_cv_ptr->image);
-    cv::waitKey(30);
+    // cv::imshow("view", intensity_cv_ptr->image);
+    // cv::waitKey(30);
 }
 
 /**
@@ -574,6 +584,7 @@ int main(int argc, char **argv)
     nh.param("/cluster/experiment_no", params.experiment_no, params.experiment_no);
     nh.param("/cluster/cone_colour", params.cone_colour, params.cone_colour);
     nh.param("/cluster/save_path", params.save_path, params.save_path);
+    nh.param("/cluster/sim_mode", params.sim_mode, params.sim_mode);
 
     // ! Initialise ClusterDetector
     const std::string clf_onnx = ros::package::getPath("lidar_dev") + "/models/lidar_cone_classifier.onnx";
@@ -583,29 +594,25 @@ int main(int argc, char **argv)
     // Create a ROS subscriber for ground plane and potential obstacles
     message_filters::Subscriber<sensor_msgs::PointCloud2> ground_sub(nh, "ground_segmentation/obstacle_cloud", 1);
     message_filters::Subscriber<sensor_msgs::PointCloud2> obstacles_sub(nh, "ground_segmentation/ground_cloud", 1);
-    message_filters::Subscriber<sensor_msgs::Image> intensity_sub(nh, "img_node/intensity_image", 1);
+    // message_filters::Subscriber<sensor_msgs::Image> intensity_sub(nh, "img_node/intensity_image", 1);
 
     // ! Approximate time sync policy
-    // TODO: Sync properly with new non-Ouster driver
-    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::Image> mySyncPolicy;
-
-    message_filters::Synchronizer<mySyncPolicy>
-        sync(mySyncPolicy(10), ground_sub, obstacles_sub, intensity_sub);
-
-    sync.registerCallback(boost::bind(&ClusterDetector::cloud_cluster_cb, &clusterDetector, _1, _2, _3));
+    // typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::Image> mySyncPolicy;
+    // message_filters::Synchronizer<mySyncPolicy>
+    //     sync(mySyncPolicy(10), ground_sub, obstacles_sub, intensity_sub);
+    // sync.registerCallback(boost::bind(&ClusterDetector::cloud_cluster_cb, &clusterDetector, _1, _2, _3));
 
     // ! exact time sync policy
     // Pass both subscribed message into the same callback
-    // message_filters::TimeSynchronizer
-    //     <sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::Image>
-    //     sync(ground_sub, obstacles_sub, intensity_sub, 10);
-    // sync.registerCallback(boost::bind(&cloud_cluster_cb, _1, _2, _3));
+    message_filters::TimeSynchronizer<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> sync(ground_sub, obstacles_sub, 10);
+    sync.registerCallback(boost::bind(&ClusterDetector::cloud_cluster_cb, &clusterDetector, _1, _2));
 
     // Create a ROS publisher for the output point cloud
     pub = nh.advertise<sensor_msgs::PointCloud2>("cluster_output", 1);
     markers_pub = nh.advertise<visualization_msgs::MarkerArray>("cluster_markers", 1);
     results_pub = nh.advertise<mur_common::cone_msg>("cone_messages", 1);
-    intensity_image_pub = nh.advertise<sensor_msgs::Image>("lidar_crop_image", 1);
+    cones_pub = nh.advertise<sensor_msgs::PointCloud2>("lidar_cone_centres", 1);
+    // intensity_image_pub = nh.advertise<sensor_msgs::Image>("lidar_crop_image", 1);
 
     // Spin
     ros::Duration(0.5).sleep();

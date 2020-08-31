@@ -2,17 +2,17 @@
 
 <launch>
     <!-- Perform box crop on indoor lidar data -->
-    <node pkg="lidar_dev" type="boxcrop_node" name="boxcrop" output="screen">
+    <!-- <node pkg="lidar_dev" type="boxcrop_node" name="boxcrop" output="screen">
         <remap from="input" to="os1_cloud_node/points"/>
-    </node>
+    </node> -->
 
     <!-- Ground segmentation -->
     <!-- add `output="screen"` if printing stdout is required -->
     <node name="ground_segmentation" pkg="linefit_ground_segmentation_ros" type="ground_segmentation_node">
         <rosparam command="load" file="$(find linefit_ground_segmentation_ros)/launch/segmentation_params.yaml"/>
 
-        <!-- <param name="input_topic" value="/os1_cloud_node/points" /> -->
-        <param name="input_topic" value="/boxcrop_output" />
+        <param name="input_topic" value="/os1_cloud_node/points" />
+        <!-- <param name="input_topic" value="/boxcrop_output" /> -->
 
         <param name="ground_output_topic" value="ground_cloud" />
         <param name="obstacle_output_topic" value="obstacle_cloud" />
@@ -21,6 +21,9 @@
     <!-- Perform clustering on segmentation obstacle output -->
     <node pkg="lidar_dev" type="cluster_node" name="cluster" output="screen">
         <rosparam command="load" file="$(find lidar_dev)/launch/cluster_params.yaml"/>
-        <!-- <remap from="input" to="ground_segmentation/obstacle_cloud"/> -->
     </node>
+
+    <!-- Add ground truth colour for simulated detections -->
+    <!-- <node pkg="lidar_dev" type="conepose_node" name="conepose" output="screen">
+    </node> -->
 </launch>
