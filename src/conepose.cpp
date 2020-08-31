@@ -23,6 +23,9 @@
  */
 
 #include <ros/ros.h>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
+
 #include <gazebo_msgs/GetModelState.h>
 #include <gazebo_msgs/GetModelProperties.h>
 #include <gazebo_msgs/GetLinkState.h>
@@ -52,6 +55,7 @@ class AddConeColour
     ros::NodeHandle nh_;
     ros::Subscriber sub_;
     ros::Publisher pub_;
+    ros::Publisher markers_pub_;
 
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf_listener_;
@@ -74,10 +78,11 @@ class AddConeColour
             // changes parent to target_frame
             // (source_frame, target_frame) shifts point cloud to target_frame
             // but frame parent does not change
+            // ! want to do some time travel here
             transform = tf_buffer_.lookupTransform(
                 target_frame,
                 source_frame,
-                ros::Time(0));
+                msg->header.stamp);
             tf2::doTransform(*msg, cloud_out, transform);
         }
         catch (tf2::TransformException &ex)
@@ -135,6 +140,9 @@ class AddConeColour
         pcl::PointCloud<pcl::PointXYZ> cones_world;
         pcl::fromROSMsg(cloud_out, cones_world);
 
+        visualization_msgs::MarkerArray marker_array_msg;
+        marker_array_msg.markers.resize(cones_lidar.size());
+
         for (int i = 0; i < cones_lidar.size(); ++i)
         {
             std::string cone_colour = FindConeColour(cones_world[i], cone_link_poses, cone_link_names);
@@ -143,10 +151,19 @@ class AddConeColour
             cone_msg.x.push_back(cones_world[i].x);
             cone_msg.y.push_back(cones_world[i].y);
             cone_msg.colour.push_back(cone_colour);
+
+            // Update marker for visualisation
+            setMarkerProperties(
+                &marker_array_msg.markers[i],
+                cones_lidar[i],
+                i,
+                cone_colour,
+                msg->header.frame_id);
         }
         cone_msg.frame_id = msg->header.frame_id;
 
         pub_.publish(cone_msg);
+        markers_pub_.publish(marker_array_msg);
     }
 
     /*
@@ -210,7 +227,70 @@ class AddConeColour
         {
             return UNKNOWN_STR;
         }
+    }
 
+    void setMarkerProperties(
+        visualization_msgs::Marker *marker,
+        pcl::PointXYZ centre,
+        int n,
+        std::string colour,
+        std::string frame_id)
+    {
+        marker->header.frame_id = frame_id;
+        marker->header.stamp = ros::Time();
+        marker->ns = "my_namespace";
+        marker->id = n;
+        marker->type = visualization_msgs::Marker::CYLINDER;
+        marker->action = visualization_msgs::Marker::ADD;
+
+        marker->pose.position.x = centre.x;
+        marker->pose.position.y = centre.y;
+        marker->pose.position.z = centre.z;
+
+        marker->pose.orientation.x = 0.0;
+        marker->pose.orientation.y = 0.0;
+        marker->pose.orientation.z = 0.0;
+        marker->pose.orientation.w = 1.0;
+
+        marker->scale.x = 0.3;
+        marker->scale.y = 0.3;
+        marker->scale.z = 0.7;
+
+        // alpha and RGB settings
+        marker->color.a = 0.4;
+
+        if (colour == BLUE_STR)
+        {
+            marker->color.r = 0.0;
+            marker->color.g = 0.0;
+            marker->color.b = 1.0;
+        }
+        else if (colour == ORANGE_STR)
+        {
+            marker->color.r = 1.0;
+            marker->color.g = 0.65;
+            marker->color.b = 0.0;
+        }
+        else if (colour == YELLOW_STR)
+        {
+            marker->color.r = 1.0;
+            marker->color.g = 1.0;
+            marker->color.b = 0.0;
+        }
+        else if (colour == BIG_STR)
+        {
+            marker->color.r = 1.0;
+            marker->color.g = 0.0;
+            marker->color.b = 0.0;
+        }
+        else // UNKNOWN_STR
+        {
+            marker->color.r = 1.0;
+            marker->color.g = 1.0;
+            marker->color.b = 1.0;
+        }
+
+        marker->lifetime = ros::Duration(0.5);
     }
 
 public:
@@ -218,6 +298,7 @@ public:
     {
         sub_ = nh_.subscribe("lidar_cone_centres", 1, &AddConeColour::pointCloudCallback, this);
         pub_ = nh_.advertise<mur_common::cone_msg>("cone_messages_sim", 1);
+        markers_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("cone_markers_sim", 1);
     }
 };
 

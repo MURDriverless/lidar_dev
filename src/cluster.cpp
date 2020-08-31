@@ -485,7 +485,7 @@ void ClusterDetector::cloud_cluster_cb(
     sensor_msgs::PointCloud2 cones_output;
     pcl::toROSMsg(cones_cloud, cones_output);
     cones_output.header.frame_id = input->header.frame_id;
-    cones_output.header.stamp = ros::Time::now();
+    cones_output.header.stamp = obstacles_msg->header.stamp;
 
     ROS_INFO("About to publish cluster output \n");
 
@@ -615,6 +615,6 @@ int main(int argc, char **argv)
     // intensity_image_pub = nh.advertise<sensor_msgs::Image>("lidar_crop_image", 1);
 
     // Spin
-    ros::Duration(0.5).sleep();
+    ros::Duration(0.1).sleep();
     ros::spin();
 }
