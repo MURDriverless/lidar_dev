@@ -35,7 +35,7 @@
 #include <pcl/filters/conditional_removal.h>
 #include <pcl/filters/filter.h>
 
-#include "lidarImgClassifier.h"
+// #include "lidarImgClassifier.h"
 
 struct ClusterParams
 {
@@ -126,10 +126,10 @@ private:
         int cone_type,
         std::string frame_id);
 
-    std::unique_ptr<LidarImgClassifier> lidarImgClassifier_;
-    int clfImgW;
-    int clfImgH;
-    int maxBatch;
+    // std::unique_ptr<LidarImgClassifier> lidarImgClassifier_;
+    // int clfImgW;
+    // int clfImgH;
+    // int maxBatch;
 };
 
 #endif // CLUSTER_H_

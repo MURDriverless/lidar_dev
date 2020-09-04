@@ -12,9 +12,9 @@ ClusterParams params;
 ClusterDetector::ClusterDetector(std::string clf_onnx, std::string clf_trt)
 {
     // set classifier parameters
-    clfImgW = 32;
-    clfImgH = 32;
-    maxBatch = 50;
+    // clfImgW = 32;
+    // clfImgH = 32;
+    // maxBatch = 50;
 
     // lidarImgClassifier_.reset(
     //     new LidarImgClassifier(

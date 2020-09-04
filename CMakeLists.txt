@@ -33,50 +33,50 @@ catkin_package()
 #-------------------------------------------------------------------------------
 # CUDA
 #-------------------------------------------------------------------------------
-find_package(CUDA 10.0 REQUIRED)
-set(CUDA_VERBOSE_BUILD ON)
-set(CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
+# find_package(CUDA 10.0 REQUIRED)
+# set(CUDA_VERBOSE_BUILD ON)
+# set(CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
 
-find_package(CUDNN REQUIRED)
-include_directories(${CUDNN_INCLUDE_DIR})
+# find_package(CUDNN REQUIRED)
+# include_directories(${CUDNN_INCLUDE_DIR})
 
 #-------------------------------------------------------------------------------
 # External Libraries
 #-------------------------------------------------------------------------------
-find_path(TENSORRT_INCLUDE_DIR NvInfer.h
-  HINTS ${TENSORRT_ROOT} ${CUDA_TOOLKIT_ROOT_DIR}
-  PATH_SUFFIXES include)
-MESSAGE(STATUS "Found TensorRT headers at ${TENSORRT_INCLUDE_DIR}")
+# find_path(TENSORRT_INCLUDE_DIR NvInfer.h
+#   HINTS ${TENSORRT_ROOT} ${CUDA_TOOLKIT_ROOT_DIR}
+#   PATH_SUFFIXES include)
+# MESSAGE(STATUS "Found TensorRT headers at ${TENSORRT_INCLUDE_DIR}")
 
-find_library(TENSORRT_LIBRARY_INFER nvinfer
-  HINTS ${TENSORRT_ROOT} ${TENSORRT_BUILD} ${CUDA_TOOLKIT_ROOT_DIR}
-  PATH_SUFFIXES lib lib64 lib/x64)
+# find_library(TENSORRT_LIBRARY_INFER nvinfer
+#   HINTS ${TENSORRT_ROOT} ${TENSORRT_BUILD} ${CUDA_TOOLKIT_ROOT_DIR}
+#   PATH_SUFFIXES lib lib64 lib/x64)
 
-find_library(TENSORRT_LIBRARY_INFER_PLUGIN nvinfer_plugin
-  HINTS  ${TENSORRT_ROOT} ${TENSORRT_BUILD} ${CUDA_TOOLKIT_ROOT_DIR}
-  PATH_SUFFIXES lib lib64 lib/x64)
+# find_library(TENSORRT_LIBRARY_INFER_PLUGIN nvinfer_plugin
+#   HINTS  ${TENSORRT_ROOT} ${TENSORRT_BUILD} ${CUDA_TOOLKIT_ROOT_DIR}
+#   PATH_SUFFIXES lib lib64 lib/x64)
 
-find_library(TENSORRT_LIBRARY_PARSER nvparsers
-  HINTS  ${TENSORRT_ROOT} ${TENSORRT_BUILD} ${CUDA_TOOLKIT_ROOT_DIR}
-  PATH_SUFFIXES lib lib64 lib/x64)
+# find_library(TENSORRT_LIBRARY_PARSER nvparsers
+#   HINTS  ${TENSORRT_ROOT} ${TENSORRT_BUILD} ${CUDA_TOOLKIT_ROOT_DIR}
+#   PATH_SUFFIXES lib lib64 lib/x64)
 
-set(TENSORRT_LIBRARY ${TENSORRT_LIBRARY_INFER} ${TENSORRT_LIBRARY_INFER_PLUGIN} ${TENSORRT_LIBRARY_PARSER})
+# set(TENSORRT_LIBRARY ${TENSORRT_LIBRARY_INFER} ${TENSORRT_LIBRARY_INFER_PLUGIN} ${TENSORRT_LIBRARY_PARSER})
 
-MESSAGE(STATUS "Find TensorRT libs at ${TENSORRT_LIBRARY}")
-find_package_handle_standard_args(
-  TENSORRT DEFAULT_MSG TENSORRT_INCLUDE_DIR TENSORRT_LIBRARY)
+# MESSAGE(STATUS "Find TensorRT libs at ${TENSORRT_LIBRARY}")
+# find_package_handle_standard_args(
+#   TENSORRT DEFAULT_MSG TENSORRT_INCLUDE_DIR TENSORRT_LIBRARY)
 
-if(NOT TENSORRT_FOUND)
-  message(ERROR
-    "Cannot find TensorRT library.")
-endif()
+# if(NOT TENSORRT_FOUND)
+#   message(ERROR
+#     "Cannot find TensorRT library.")
+# endif()
 
 
 #-------------------------------------------------------------------------------
 # Build Libraries
 #-------------------------------------------------------------------------------
-add_library(classifier src/lidarImgClassifier.cpp src/Utils.cpp)
-target_link_libraries(classifier ${OPENCV_LIBS} ${catkin_LIBRARIES} nvonnxparser)
+# add_library(classifier src/lidarImgClassifier.cpp src/Utils.cpp)
+# target_link_libraries(classifier ${OPENCV_LIBS} ${catkin_LIBRARIES} nvonnxparser)
 
 #-------------------------------------------------------------------------------
 # Executables
@@ -104,6 +104,7 @@ add_executable(conepose_node src/conepose.cpp)
 target_link_libraries(conepose_node ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 
 add_executable(cluster_node src/cluster.cpp)
-target_link_libraries(cluster_node classifier ${catkin_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(cluster_node ${catkin_LIBRARIES} ${OpenCV_LIBS})
+# target_link_libraries(cluster_node classifier ${catkin_LIBRARIES} ${OpenCV_LIBS})
 
 add_dependencies(cluster_node ${catkin_EXPORTED_TARGETS})
