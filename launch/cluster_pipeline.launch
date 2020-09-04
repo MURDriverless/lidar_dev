@@ -8,7 +8,7 @@
 
     <!-- Ground segmentation -->
     <!-- add `output="screen"` if printing stdout is required -->
-    <node name="ground_segmentation" pkg="linefit_ground_segmentation_ros" type="ground_segmentation_node">
+    <node name="ground_segmentation" pkg="linefit_ground_segmentation_ros" type="ground_segmentation_node" output="screen">
         <rosparam command="load" file="$(find linefit_ground_segmentation_ros)/launch/segmentation_params.yaml"/>
 
         <param name="input_topic" value="/os1_cloud_node/points" />
@@ -16,6 +16,8 @@
 
         <param name="ground_output_topic" value="ground_cloud" />
         <param name="obstacle_output_topic" value="obstacle_cloud" />
+
+        <param name="visualize" value="false" />
     </node>
 
     <!-- Perform clustering on segmentation obstacle output -->
@@ -24,6 +26,5 @@
     </node>
 
     <!-- Add ground truth colour for simulated detections -->
-    <!-- <node pkg="lidar_dev" type="conepose_node" name="conepose" output="screen">
-    </node> -->
+    <node pkg="lidar_dev" type="conepose_node" name="conepose" output="screen" />
 </launch>

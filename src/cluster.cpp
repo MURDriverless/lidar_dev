@@ -615,6 +615,6 @@ int main(int argc, char **argv)
     // intensity_image_pub = nh.advertise<sensor_msgs::Image>("lidar_crop_image", 1);
 
     // Spin
-    ros::Duration(0.1).sleep();
+    // ros::Duration(0.1).sleep();
     ros::spin();
 }
