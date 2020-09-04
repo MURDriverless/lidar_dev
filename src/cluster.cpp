@@ -563,7 +563,7 @@ int main(int argc, char **argv)
 {
     // Initialize ROS
     ros::init(argc, argv, "cluster_node");
-    ros::NodeHandle nh;
+    ros::NodeHandle nh("~");
 
     // Parse parameters
     nh.param("/cluster/cluster_tol", params.cluster_tol, params.cluster_tol);
@@ -592,8 +592,8 @@ int main(int argc, char **argv)
     ClusterDetector clusterDetector(clf_onnx, clf_trt);
 
     // Create a ROS subscriber for ground plane and potential obstacles
-    message_filters::Subscriber<sensor_msgs::PointCloud2> ground_sub(nh, "ground_segmentation/obstacle_cloud", 1);
-    message_filters::Subscriber<sensor_msgs::PointCloud2> obstacles_sub(nh, "ground_segmentation/ground_cloud", 1);
+    message_filters::Subscriber<sensor_msgs::PointCloud2> ground_sub(nh, "/ground_segmentation/obstacle_cloud", 1);
+    message_filters::Subscriber<sensor_msgs::PointCloud2> obstacles_sub(nh, "/ground_segmentation/ground_cloud", 1);
     // message_filters::Subscriber<sensor_msgs::Image> intensity_sub(nh, "img_node/intensity_image", 1);
 
     // ! Approximate time sync policy

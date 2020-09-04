@@ -12,6 +12,8 @@
         <rosparam command="load" file="$(find linefit_ground_segmentation_ros)/launch/segmentation_params.yaml"/>
 
         <param name="input_topic" value="/os1_cloud_node/points" />
+
+        <!-- Enable if using boxcrop -->
         <!-- <param name="input_topic" value="/boxcrop_output" /> -->
 
         <param name="ground_output_topic" value="ground_cloud" />

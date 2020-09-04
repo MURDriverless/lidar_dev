@@ -294,9 +294,11 @@ class AddConeColour
     }
 
 public:
-    AddConeColour() : tf_listener_(tf_buffer_)
+    AddConeColour() :
+        tf_listener_(tf_buffer_),
+        nh_("~")
     {
-        sub_ = nh_.subscribe("lidar_cone_centres", 1, &AddConeColour::pointCloudCallback, this);
+        sub_ = nh_.subscribe("/cluster/lidar_cone_centres", 1, &AddConeColour::pointCloudCallback, this);
         pub_ = nh_.advertise<mur_common::cone_msg>("cone_messages_sim", 1);
         markers_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("cone_markers_sim", 1);
     }
