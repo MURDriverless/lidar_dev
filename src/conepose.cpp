@@ -146,10 +146,10 @@ class AddConeColour
         for (int i = 0; i < cones_lidar.size(); ++i)
         {
             std::string cone_colour = FindConeColour(cones_world[i], cone_link_poses, cone_link_names);
-            // cone_msg.x.push_back(cones_lidar[i].x);
-            // cone_msg.y.push_back(cones_lidar[i].y);
-            cone_msg.x.push_back(cones_world[i].x);
-            cone_msg.y.push_back(cones_world[i].y);
+            cone_msg.x.push_back(cones_lidar[i].x);
+            cone_msg.y.push_back(cones_lidar[i].y);
+            // cone_msg.x.push_back(cones_world[i].x);
+            // cone_msg.y.push_back(cones_world[i].y);
             cone_msg.colour.push_back(cone_colour);
 
             // Update marker for visualisation
