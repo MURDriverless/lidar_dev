@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <launch>
-    <!-- Perform box crop on indoor lidar data -->
-    <!-- <node pkg="lidar_dev" type="boxcrop_node" name="boxcrop" output="screen">
-        <remap from="input" to="os1_cloud_node/points"/>
-    </node> -->
+    <!-- Perform box crop on agent vehicle -->
+    <node pkg="lidar_dev" type="carcrop_node" name="carcrop" output="screen">
+        <rosparam command="load" file="$(find lidar_dev)/launch/carcrop_params.yaml"/>
+    </node>
 
     <!-- Ground segmentation -->
     <!-- add `output="screen"` if printing stdout is required -->
     <node name="ground_segmentation" pkg="linefit_ground_segmentation_ros" type="ground_segmentation_node" output="screen">
         <rosparam command="load" file="$(find linefit_ground_segmentation_ros)/launch/segmentation_params.yaml"/>
 
-        <param name="input_topic" value="/os1_cloud_node/points" />
+        <!-- <param name="input_topic" value="/os1_cloud_node/points" /> -->
 
         <!-- Enable if using boxcrop -->
-        <!-- <param name="input_topic" value="/boxcrop_output" /> -->
+        <param name="input_topic" value="/carcrop_output" />
 
         <param name="ground_output_topic" value="ground_cloud" />
         <param name="obstacle_output_topic" value="obstacle_cloud" />

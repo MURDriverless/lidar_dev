@@ -34,10 +34,13 @@ void cloud_cb(const sensor_msgs::PointCloud2ConstPtr &cloud_msg)
 	pcl_conversions::toPCL(*cloud_msg, *cloud);
 
 	// Rotate 180 deg and flip
-	double min_X = -maxX;
-	double max_X = -minX;
-	double min_Y = -maxY;
-	double max_Y = -minY;
+	// ! when working in mursim the os1 lidar frame seems to be aligned with os1 sensor frame
+	// ! if that's the case, then we dont' need to rotate and flip
+	// ! update: it seems like this is a discrepancy on how the OS1 is simulated
+	double min_X = minX;
+	double max_X = maxX;
+	double min_Y = minY;
+	double max_Y = maxY;
 	double min_Z = minZ;
 	double max_Z = maxZ;
 
@@ -46,6 +49,7 @@ void cloud_cb(const sensor_msgs::PointCloud2ConstPtr &cloud_msg)
 	box.setMin(Eigen::Vector4f(min_X, min_Y, min_Z, 1.0));
 	box.setMax(Eigen::Vector4f(max_X, max_Y, max_Z, 1.0));
 	box.setInputCloud(cloudPtr);
+	box.setNegative(true);
 	box.filter(cloud_filtered);
 
 	// Convert to ROS data type
