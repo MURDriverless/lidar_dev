@@ -1,25 +1,12 @@
 /*
  * conepose.cpp
+ *
  * ROS node to recover all the known links and corresponding poses.
  * Then filter out potential links of interest, that is, blue and yellow cones.
- *
- * gazebo/get_link_state (service)
- * /gazebo/link_state (published topic)
- *
- * rosservice call gazebo/get_link_state 'link_name: track::blue_cone_0::link'
- * rosservice call gazebo/get_model_state 'link_name: track::blue_cone_0::link'
- *
- * How about I just subscribe to /gazebo/link_state and process that?
- */
-
-/*
- * Subscribes to /lidar_cone_centres (cluster_node)
- *
- * Convert iterate through point cloud and combine that with ground truth colour
- * then publish a mur_common cone_msg
- *
- * Publishes to /cone_messages_sim
- *
+ *  - Subscribes to /lidar_cone_centres (cluster_node)
+ *  - Convert iterate through point cloud and combine that with ground truth colour
+ *    then publish a mur_common cone_msg
+ *  - Publishes to /cone_messages_sim
  */
 
 #include <ros/ros.h>
@@ -68,7 +55,7 @@ class AddConeColour
     void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr &msg)
     {
         geometry_msgs::TransformStamped transform;
-        const std::string target_frame = "odom";
+        const std::string target_frame = "map"; // use "odom" with tortoisebot
         const std::string source_frame = msg->header.frame_id;
         sensor_msgs::PointCloud2 cloud_out;
 

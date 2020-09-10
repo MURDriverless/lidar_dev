@@ -103,6 +103,9 @@ target_link_libraries(lidar_tf_node ${catkin_LIBRARIES})
 add_executable(conepose_node src/conepose.cpp)
 target_link_libraries(conepose_node ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 
+add_executable(p3d_tf_node src/p3d_tf.cpp)
+target_link_libraries(p3d_tf_node ${catkin_LIBRARIES})
+
 add_executable(cluster_node src/cluster.cpp)
 target_link_libraries(cluster_node ${catkin_LIBRARIES} ${OpenCV_LIBS})
 # target_link_libraries(cluster_node classifier ${catkin_LIBRARIES} ${OpenCV_LIBS})

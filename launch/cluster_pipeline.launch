@@ -29,4 +29,7 @@
 
     <!-- Add ground truth colour for simulated detections -->
     <node pkg="lidar_dev" type="conepose_node" name="conepose" output="screen" />
+
+    <!-- For mursim, use p3d to publish map frame -->
+    <node pkg="lidar_dev" type="p3d_tf_node" name="p3d_tf" output="screen" />
 </launch>
