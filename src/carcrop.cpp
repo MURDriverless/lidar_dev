@@ -1,3 +1,10 @@
+/*
+ * carcrop.cpp
+ *
+ * ros node which filters output the points which are within the vicinity of
+ * the race car.
+ */
+
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 
@@ -46,6 +53,8 @@ void cloud_cb(const sensor_msgs::PointCloud2ConstPtr &cloud_msg)
 	box.setMin(Eigen::Vector4f(min_X, min_Y, min_Z, 1.0));
 	box.setMax(Eigen::Vector4f(max_X, max_Y, max_Z, 1.0));
 	box.setInputCloud(cloudPtr);
+	// ! TODO: test to see if carcrop is functioning properly
+	box.setNegative(true);
 	box.filter(cloud_filtered);
 
 	// Convert to ROS data type

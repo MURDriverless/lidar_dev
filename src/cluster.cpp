@@ -1,27 +1,29 @@
 #include "cluster.h"
 #include <mur_common/cone_msg.h>
 
-ros::Publisher pub;                 // publisher for all reconstructed cluster clouds
-ros::Publisher markers_pub;         // publisher for cylinder markers
-ros::Publisher results_pub;         // publisher for cone_msg
-ros::Publisher intensity_image_pub; // publisher for intensity images
-
-ClusterParams params;
-
-ClusterDetector::ClusterDetector(std::string clf_onnx, std::string clf_trt)
+ClusterDetector::ClusterDetector(
+    ros::NodeHandle n,
+    ClusterParams p) : params(p)
 {
-    // set classifier parameters
-    clfImgW = 32;
-    clfImgH = 32;
-    maxBatch = 50;
+    nh = n;
 
-    lidarImgClassifier_.reset(
-        new LidarImgClassifier(
-            clf_onnx,
-            clf_trt,
-            clfImgW,
-            clfImgH,
-            maxBatch));
+    ground_sub.subscribe(nh, "ground_segmentation/obstacle_cloud", 1);
+    obstacles_sub.subscribe(nh, "ground_segmentation/ground_cloud", 1);
+    intensity_sub.subscribe(nh, "img_node/intensity_image", 1);
+    sync.reset(new Sync(mySyncPolicy(10), ground_sub, obstacles_sub, intensity_sub));
+    sync->registerCallback(boost::bind(&ClusterDetector::cloud_cluster_cb, this, _1, _2, _3));
+
+    cluster_pub = nh.advertise<sensor_msgs::PointCloud2>("cluster_output", 1);
+    markers_pub = nh.advertise<visualization_msgs::MarkerArray>("cluster_markers", 1);
+    results_pub = nh.advertise<mur_common::cone_msg>("cone_messages", 1);
+    intensity_image_pub = nh.advertise<sensor_msgs::Image>("lidar_crop_image", 1);
+
+    lidarImgClassifier_.reset(new LidarImgClassifier(
+        params.clf_onnx,
+        params.clf_trt,
+        params.clf_img_w,
+        params.clf_img_h,
+        params.clf_max_batch));
 }
 
 /**
@@ -148,7 +150,7 @@ cv::Mat ClusterDetector::cloud_to_img(
  * TODO: grab OS1 row/col scales from sensor instead of hard coding
  * TODO: refactor this data collection routine into new ClusterDetector class
  */
-void CloudToImage(
+void ClusterDetector::CloudToImage(
     const pcl::PointCloud<pcl::PointXYZ> &cluster,
     const std_msgs::Header &lidar_header,
     const cv_bridge::CvImagePtr &cv_ptr,
@@ -279,6 +281,7 @@ void ClusterDetector::cloud_cluster_cb(
     pcl::fromROSMsg(*ground_msg, *input_ground);
 
     // Use a conditional filter to remove points at the origin (0, 0, 0)
+    // TODO: check if this is still necesary if using carcrop
     pcl::ConditionOr<pcl::PointXYZ>::Ptr range_cond(new pcl::ConditionOr<pcl::PointXYZ>());
 
     range_cond->addComparison(pcl::FieldComparison<pcl::PointXYZ>::ConstPtr(
@@ -482,7 +485,7 @@ void ClusterDetector::cloud_cluster_cb(
     ROS_INFO("About to publish cluster output \n");
 
     // publish the output data
-    pub.publish(output);
+    cluster_pub.publish(output);
     markers_pub.publish(marker_array_msg);
     results_pub.publish(cone_msg);
 
@@ -549,65 +552,65 @@ void ClusterDetector::set_marker_properties(
     marker->lifetime = ros::Duration(0.5);
 }
 
-int main(int argc, char **argv)
-{
-    // Initialize ROS
-    ros::init(argc, argv, "cluster_node");
-    ros::NodeHandle nh;
+// int main(int argc, char **argv)
+// {
+//     // Initialize ROS
+//     ros::init(argc, argv, "cluster_node");
+//     ros::NodeHandle nh;
 
-    // Parse parameters
-    nh.param("/cluster/cluster_tol", params.cluster_tol, params.cluster_tol);
-    nh.param("/cluster/cluster_min", params.cluster_min, params.cluster_min);
-    nh.param("/cluster/cluster_max", params.cluster_max, params.cluster_max);
-    nh.param("/cluster/reconst_radius", params.reconst_radius, params.reconst_radius);
-    nh.param("/cluster/marker_sx", params.marker_sx, params.marker_sx);
-    nh.param("/cluster/marker_sy", params.marker_sy, params.marker_sy);
-    nh.param("/cluster/marker_sz", params.marker_sz, params.marker_sz);
-    nh.param("/cluster/marker_alpha", params.marker_alpha, params.marker_alpha);
-    nh.param("/cluster/marker_r", params.marker_r, params.marker_r);
-    nh.param("/cluster/marker_g", params.marker_g, params.marker_g);
-    nh.param("/cluster/marker_b", params.marker_b, params.marker_b);
-    nh.param("/cluster/lidar_hori_res", params.lidar_hori_res, params.lidar_hori_res);
-    nh.param("/cluster/lidar_vert_res", params.lidar_vert_res, params.lidar_vert_res);
-    nh.param("/cluster/filter_factor", params.filter_factor, params.filter_factor);
-    nh.param("/cluster/magic_offset", params.magic_offset, params.magic_offset);
-    nh.param("/cluster/experiment_no", params.experiment_no, params.experiment_no);
-    nh.param("/cluster/cone_colour", params.cone_colour, params.cone_colour);
-    nh.param("/cluster/save_path", params.save_path, params.save_path);
+//     // Parse parameters
+//     nh.param("/cluster/cluster_tol", params.cluster_tol, params.cluster_tol);
+//     nh.param("/cluster/cluster_min", params.cluster_min, params.cluster_min);
+//     nh.param("/cluster/cluster_max", params.cluster_max, params.cluster_max);
+//     nh.param("/cluster/reconst_radius", params.reconst_radius, params.reconst_radius);
+//     nh.param("/cluster/marker_sx", params.marker_sx, params.marker_sx);
+//     nh.param("/cluster/marker_sy", params.marker_sy, params.marker_sy);
+//     nh.param("/cluster/marker_sz", params.marker_sz, params.marker_sz);
+//     nh.param("/cluster/marker_alpha", params.marker_alpha, params.marker_alpha);
+//     nh.param("/cluster/marker_r", params.marker_r, params.marker_r);
+//     nh.param("/cluster/marker_g", params.marker_g, params.marker_g);
+//     nh.param("/cluster/marker_b", params.marker_b, params.marker_b);
+//     nh.param("/cluster/lidar_hori_res", params.lidar_hori_res, params.lidar_hori_res);
+//     nh.param("/cluster/lidar_vert_res", params.lidar_vert_res, params.lidar_vert_res);
+//     nh.param("/cluster/filter_factor", params.filter_factor, params.filter_factor);
+//     nh.param("/cluster/magic_offset", params.magic_offset, params.magic_offset);
+//     nh.param("/cluster/experiment_no", params.experiment_no, params.experiment_no);
+//     nh.param("/cluster/cone_colour", params.cone_colour, params.cone_colour);
+//     nh.param("/cluster/save_path", params.save_path, params.save_path);
 
-    // ! Initialise ClusterDetector
-    const std::string clf_onnx = ros::package::getPath("lidar_dev") + "/models/lidar_cone_classifier.onnx";
-    const std::string clf_trt = ros::package::getPath("lidar_dev") + "/models/lidar_cone_classifier.trt";
-    ClusterDetector clusterDetector(clf_onnx, clf_trt);
+//     // ! Initialise ClusterDetector
+//     const std::string clf_onnx = ros::package::getPath("lidar_dev") + "/models/lidar_cone_classifier.onnx";
+//     const std::string clf_trt = ros::package::getPath("lidar_dev") + "/models/lidar_cone_classifier.trt";
+//     ClusterDetector clusterDetector(clf_onnx, clf_trt);
 
-    // Create a ROS subscriber for ground plane and potential obstacles
-    message_filters::Subscriber<sensor_msgs::PointCloud2> ground_sub(nh, "ground_segmentation/obstacle_cloud", 1);
-    message_filters::Subscriber<sensor_msgs::PointCloud2> obstacles_sub(nh, "ground_segmentation/ground_cloud", 1);
-    message_filters::Subscriber<sensor_msgs::Image> intensity_sub(nh, "img_node/intensity_image", 1);
+//     // Create a ROS subscriber for ground plane and potential obstacles
+//     message_filters::Subscriber<sensor_msgs::PointCloud2> ground_sub(nh, "ground_segmentation/obstacle_cloud", 1);
+//     message_filters::Subscriber<sensor_msgs::PointCloud2> obstacles_sub(nh, "ground_segmentation/ground_cloud", 1);
+//     message_filters::Subscriber<sensor_msgs::Image> intensity_sub(nh, "img_node/intensity_image", 1);
 
-    // ! Approximate time sync policy
-    // TODO: Sync properly with new non-Ouster driver
-    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::Image> mySyncPolicy;
+//     // ! Approximate time sync policy
+//     // TODO: Sync properly with new non-Ouster driver
+//     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::Image> mySyncPolicy;
 
-    message_filters::Synchronizer<mySyncPolicy>
-        sync(mySyncPolicy(10), ground_sub, obstacles_sub, intensity_sub);
+//     message_filters::Synchronizer<mySyncPolicy>
+//         sync(mySyncPolicy(10), ground_sub, obstacles_sub, intensity_sub);
 
-    sync.registerCallback(boost::bind(&ClusterDetector::cloud_cluster_cb, &clusterDetector, _1, _2, _3));
+//     sync.registerCallback(boost::bind(&ClusterDetector::cloud_cluster_cb, &clusterDetector, _1, _2, _3));
 
-    // ! exact time sync policy
-    // Pass both subscribed message into the same callback
-    // message_filters::TimeSynchronizer
-    //     <sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::Image>
-    //     sync(ground_sub, obstacles_sub, intensity_sub, 10);
-    // sync.registerCallback(boost::bind(&cloud_cluster_cb, _1, _2, _3));
+//     // ! exact time sync policy
+//     // Pass both subscribed message into the same callback
+//     // message_filters::TimeSynchronizer
+//     //     <sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::Image>
+//     //     sync(ground_sub, obstacles_sub, intensity_sub, 10);
+//     // sync.registerCallback(boost::bind(&cloud_cluster_cb, _1, _2, _3));
 
-    // Create a ROS publisher for the output point cloud
-    pub = nh.advertise<sensor_msgs::PointCloud2>("cluster_output", 1);
-    markers_pub = nh.advertise<visualization_msgs::MarkerArray>("cluster_markers", 1);
-    results_pub = nh.advertise<mur_common::cone_msg>("cone_messages", 1);
-    intensity_image_pub = nh.advertise<sensor_msgs::Image>("lidar_crop_image", 1);
+//     // Create a ROS publisher for the output point cloud
+//     pub = nh.advertise<sensor_msgs::PointCloud2>("cluster_output", 1);
+//     markers_pub = nh.advertise<visualization_msgs::MarkerArray>("cluster_markers", 1);
+//     results_pub = nh.advertise<mur_common::cone_msg>("cone_messages", 1);
+//     intensity_image_pub = nh.advertise<sensor_msgs::Image>("lidar_crop_image", 1);
 
-    // Spin
-    ros::Duration(0.5).sleep();
-    ros::spin();
-}
+//     // Spin
+//     ros::Duration(0.5).sleep();
+//     ros::spin();
+// }

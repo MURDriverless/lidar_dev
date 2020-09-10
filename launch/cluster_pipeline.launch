@@ -18,9 +18,8 @@
         <param name="obstacle_output_topic" value="obstacle_cloud" />
     </node>
 
-    <!-- Perform clustering on segmentation obstacle output -->
-    <node pkg="lidar_dev" type="cluster_node" name="cluster" output="screen">
+    <!-- Perform clustering on ground segmentation outputs -->
+    <node pkg="lidar_dev" type="clusterNode" name="clusterNode" output="screen">
         <rosparam command="load" file="$(find lidar_dev)/launch/cluster_params.yaml"/>
-        <!-- <remap from="input" to="ground_segmentation/obstacle_cloud"/> -->
     </node>
 </launch>

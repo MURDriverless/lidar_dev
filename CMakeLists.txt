@@ -69,7 +69,7 @@ endif()
 #-------------------------------------------------------------------------------
 # Build Libraries
 #-------------------------------------------------------------------------------
-add_library(classifier src/lidarImgClassifier.cpp src/Utils.cpp)
+add_library(classifier src/classifier.cpp src/Utils.cpp)
 target_link_libraries(classifier ${OPENCV_LIBS} ${catkin_LIBRARIES} nvonnxparser)
 
 #-------------------------------------------------------------------------------
@@ -82,19 +82,16 @@ include_directories(
   ${TENSORRT_INCLUDE_DIR}
 )
 
-add_executable(segmentation_node src/segmentation.cpp)
-target_link_libraries(segmentation_node ${catkin_LIBRARIES})
-
 add_executable(boxcrop_node src/boxcrop.cpp)
 target_link_libraries(boxcrop_node ${catkin_LIBRARIES})
 
 add_executable(carcrop_node src/carcrop.cpp)
 target_link_libraries(carcrop_node ${catkin_LIBRARIES})
 
-add_executable(lidar_tf_node src/transform_pc.cpp)
-target_link_libraries(lidar_tf_node ${catkin_LIBRARIES})
+# add_executable(cluster_node src/cluster.cpp)
+# target_link_libraries(cluster_node classifier ${catkin_LIBRARIES} ${OpenCV_LIBS})
 
-add_executable(cluster_node src/cluster.cpp)
+add_executable(cluster_node src/clusterNode.cpp src/cluster.cpp)
 target_link_libraries(cluster_node classifier ${catkin_LIBRARIES} ${OpenCV_LIBS})
 
 add_dependencies(cluster_node ${catkin_EXPORTED_TARGETS})

@@ -17,8 +17,19 @@ lidar_vert_res: 64      # lidar vertical resolution
 filter_factor: 0.5      # filter factor (used for tuning rule based filter)
 magic_offset: 9         # temporary measure to align lidar image bounding box
 
+## ------------------------------------
+## lidar intensity image classification
+## ------------------------------------
+clf_img_w: 32           # classifier input image width
+clf_img_h: 32           # calssifier input image height
+clf_max_batch: 50       # classifier input max batch size
 
-## lidar image crops related
+clf_onnx: "/model/lidar_cone_classifier.onnx" # path to classifier model [onnx]
+clf_trt: "/model/lidar_cone_classifier.trt"   # path to classifier model [trt]
+
+## ------------------------------------------
+## lidar intensity image crop data colleciton
+## ------------------------------------------
 experiment_no: 6              # experiment number
 cone_colour: "y"              # y for yellow, b for blue
 save_path: "/tmp/lidar_imgs/" # path where lidar image crops are saved to

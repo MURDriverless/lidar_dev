@@ -72,5 +72,7 @@ References for TensorRT related implementation.
   - [x] Implement temporary work around with `magic_offset`.
   - [x] Test if the offset works for `1024 x 64` mode
 - [x] Implement lidar image saving feature, resizing all lidar image crops to `32 x 32`
+- [ ] Refector current codes
+- [ ] Test `carcrop_node` on indoor sensor data
 - [ ] Make a fork for the official `ouster_example` for the purpose of custom `img_node`
 - [ ] Update readme with data collection instructions.

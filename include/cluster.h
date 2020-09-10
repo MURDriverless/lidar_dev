@@ -35,7 +35,7 @@
 #include <pcl/filters/conditional_removal.h>
 #include <pcl/filters/filter.h>
 
-#include "lidarImgClassifier.h"
+#include "classifier.h"
 
 struct ClusterParams
 {
@@ -54,62 +54,71 @@ struct ClusterParams
                       lidar_vert_res(64),
                       filter_factor(1.0),
                       magic_offset(9),
+                      clf_img_w(32),
+                      clf_img_h(32),
+                      clf_max_batch(50),
+                      clf_onnx("/model/lidar_cone_classifier.onnx"),
+                      clf_trt("/model/lidar_cone_classifier.trt"),
                       experiment_no(0),
                       cone_colour("b"),
                       save_path("/tmp/lidar_imgs/") {}
 
-    // cluster tolerance
-    double cluster_tol;
-    // cluster minimum number of points
-    int cluster_min;
-    // cluster maximum number of points
-    int cluster_max;
-    // radius of cluster reconstruction
-    double reconst_radius;
 
-    // marker scale x
-    double marker_sx;
-    // marker scale y
-    double marker_sy;
-    // marker scale z
-    double marker_sz;
-    // marker alpha
-    double marker_alpha;
-    // marker reg
-    double marker_r;
-    // marker green
-    double marker_g;
-    // marker blue
-    double marker_b;
+    double cluster_tol;             // cluster tolerance
+    int cluster_min;                // cluster minimum number of points
+    int cluster_max;                // cluster maximum number of points
+    double reconst_radius;          // radius of cluster reconstruction
 
-    // lidar horizontal resolution
-    int lidar_hori_res;
-    // lidar vertical resolution
-    int lidar_vert_res;
+    double marker_sx;               // marker scale x
+    double marker_sy;               // marker scale y
+    double marker_sz;               // marker scale z
+    double marker_alpha;            // marker alpha
+    double marker_r;                // marker reg
+    double marker_g;                // marker green
+    double marker_b;                // marker blue
 
-    // filter factor
-    double filter_factor;
-    // temporary solution for fixing lidar bounding box offset
-    int magic_offset;
+    int lidar_hori_res;             // lidar horizontal resolution
+    int lidar_vert_res;             // lidar vertical resolution
+    double filter_factor;           // filter factor
+    int magic_offset;               // temp solution for lidar bbox offset
 
-    // lidar data collection experiment count
-    int experiment_no;
-    // traffic cone type used
-    std::string cone_colour;
-    // save path for lidar image crops
-    std::string save_path;
+    int clf_img_w;                  // classifier image width
+    int clf_img_h;                  // classifier image height
+    int clf_max_batch;              // classifier input max batch
+    std::string clf_onnx;           // classifier onnx model path
+    std::string clf_trt;            // classifier trt model path
+
+    int experiment_no;              // lidar data collection experiment count
+    std::string cone_colour;        // traffic cone type used
+    std::string save_path;          // save path for lidar image crops
 };
 
 class ClusterDetector
 {
 public:
-    ClusterDetector(std::string clf_onnx, std::string clf_trt);
+    ClusterDetector(ros::NodeHandle n, ClusterParams p);
     void cloud_cluster_cb(
         const sensor_msgs::PointCloud2ConstPtr &obstacles_msg,
         const sensor_msgs::PointCloud2ConstPtr &ground_msg,
         const sensor_msgs::ImageConstPtr &intensity_msg);
 
 private:
+    ros::NodeHandle nh;
+
+    message_filters::Subscriber<sensor_msgs::PointCloud2> ground_sub;
+    message_filters::Subscriber<sensor_msgs::PointCloud2> obstacles_sub;
+    message_filters::Subscriber<sensor_msgs::Image> intensity_sub;
+    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::Image> mySyncPolicy;
+    typedef message_filters::Synchronizer<mySyncPolicy> Sync;
+    boost::shared_ptr<Sync> sync;
+
+    ros::Publisher cluster_pub;
+    ros::Publisher markers_pub;
+    ros::Publisher results_pub;
+    ros::Publisher intensity_image_pub;
+
+    ClusterParams params;
+
     cv::Rect cloud_to_bbox(const pcl::PointCloud<pcl::PointXYZ> &cluster);
     cv::Mat cloud_to_img(
         const pcl::PointCloud<pcl::PointXYZ> &cluster,
@@ -122,11 +131,15 @@ private:
         int n,
         int cone_type,
         std::string frame_id);
-
+    void CloudToImage(
+        const pcl::PointCloud<pcl::PointXYZ> &cluster,
+        const std_msgs::Header &lidar_header,
+        const cv_bridge::CvImagePtr &cv_ptr,
+        const int &experiment_no,
+        const int &frame_count,
+        const int &cone_count,
+        const std::string &cone_colour);
     std::unique_ptr<LidarImgClassifier> lidarImgClassifier_;
-    int clfImgW;
-    int clfImgH;
-    int maxBatch;
 };
 
 #endif // CLUSTER_H_

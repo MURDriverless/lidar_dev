@@ -10,7 +10,7 @@
 #include <opencv2/opencv.hpp>
 #include <chrono>
 
-#include "lidarImgClassifier.h"
+#include "classifier.h"
 
 using namespace nvinfer1;
 using namespace std;
@@ -119,12 +119,12 @@ vector<int> LidarImgClassifier::doInference(vector<cv::Mat> & imgs)
 
     // copy input to GPU, execute batch asynchronously, then copy back
     CUDA_CHECK(cudaMemcpyAsync(
-        buffers_.get()[0], 
-        inputData_.get(), 
-        batchSize * volume(engine_->getBindingDimensions(0)) * sizeof(float), 
+        buffers_.get()[0],
+        inputData_.get(),
+        batchSize * volume(engine_->getBindingDimensions(0)) * sizeof(float),
         cudaMemcpyHostToDevice, stream_
         ));
-    
+
     context_->enqueue(batchSize, buffers_.get(), stream_, nullptr);
 
     float *output = outputData_.get();
