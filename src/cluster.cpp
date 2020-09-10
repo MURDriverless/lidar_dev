@@ -253,7 +253,7 @@ void CloudToImage(
     // ! will only work if directory exists
     // TODO: update code to create directory if not exist
     bool result = cv::imwrite(img_path, resized, compression_params);
-    std::cout << "imwrite result = " << result << std::endl;
+    // std::cout << "imwrite result = " << result << std::endl;
 }
 
 /**
@@ -304,7 +304,7 @@ void ClusterDetector::cloud_cluster_cb(
     // apply filter
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZ>);
     condrem.filter(*cloud_filtered);
-    std::cout << "PointCloud after conditional filtering has: " << cloud_filtered->points.size() << " data points." << std::endl;
+    // std::cout << "PointCloud after conditional filtering has: " << cloud_filtered->points.size() << " data points." << std::endl;
 
     // create KdTree object
     pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
@@ -325,7 +325,7 @@ void ClusterDetector::cloud_cluster_cb(
     // vector to store marker points
     std::vector<pcl::PointXYZ> marker_points;
 
-    std::cout << "Num of clusters" << cluster_indices.size() << std::endl;
+    // std::cout << "Num of clusters" << cluster_indices.size() << std::endl;
 
     // copy intensity image here, so that multiple bbox can be drawn
     // ! disable for simulation
@@ -393,9 +393,9 @@ void ClusterDetector::cloud_cluster_cb(
 
         // apply rule based filter
         double filter_factor = params.filter_factor; // used for tuning
-        std::cout << "[potential] NumExpectedPoints = " << filter_factor * num_expected_points(centre) << std::endl;
-        std::cout << "[potential] num actual points = " << cloud_cluster->size() << std::endl;
-        std::cout << "[potential] distance to cone  = " << d << std::endl;
+        // std::cout << "[potential] NumExpectedPoints = " << filter_factor * num_expected_points(centre) << std::endl;
+        // std::cout << "[potential] num actual points = " << cloud_cluster->size() << std::endl;
+        // std::cout << "[potential] distance to cone  = " << d << std::endl;
 
         // skip processing step if there is insufficient points
         int expected = num_expected_points(centre);
@@ -404,10 +404,10 @@ void ClusterDetector::cloud_cluster_cb(
             continue;
         }
 
-        std::cout << "[confirmed] Printing x, y, r   " << centre.x << " " << centre.y << " " << radius << std::endl;
-        std::cout << "[confirmed] NumExpectedPoints = " << filter_factor * num_expected_points(centre) << std::endl;
-        std::cout << "[confirmed] num actual points = " << cloud_cluster->size() << std::endl;
-        std::cout << "[confirmed] distance to cone  = " << d << std::endl;
+        // std::cout << "[confirmed] Printing x, y, r   " << centre.x << " " << centre.y << " " << radius << std::endl;
+        // std::cout << "[confirmed] NumExpectedPoints = " << filter_factor * num_expected_points(centre) << std::endl;
+        // std::cout << "[confirmed] num actual points = " << cloud_cluster->size() << std::endl;
+        // std::cout << "[confirmed] distance to cone  = " << d << std::endl;
 
         // add to marker points
         marker_points.push_back(centre);
@@ -454,7 +454,7 @@ void ClusterDetector::cloud_cluster_cb(
             input->header.frame_id);
     }
 
-    std::cout << "NUM OF MARKERS = " << marker_points.size() << std::endl;
+    // std::cout << "NUM OF MARKERS = " << marker_points.size() << std::endl;
 
     // prepare results msg (in cone_msg format)
     mur_common::cone_msg cone_msg;
@@ -487,7 +487,7 @@ void ClusterDetector::cloud_cluster_cb(
     cones_output.header.frame_id = input->header.frame_id;
     cones_output.header.stamp = obstacles_msg->header.stamp;
 
-    ROS_INFO("About to publish cluster output \n");
+    // ROS_INFO("About to publish cluster output \n");
 
     // publish the output data
     pub.publish(output);
@@ -498,7 +498,7 @@ void ClusterDetector::cloud_cluster_cb(
     // measure and print runtime performance
     end_ = ros::WallTime::now();
     double execution_time = (end_ - start_).toNSec() * 1e-6;
-    ROS_INFO_STREAM("Exectution time (ms): " << execution_time);
+    // ROS_INFO_STREAM("Exectution time (ms): " << execution_time);
 
 
     // ! display intensity image
