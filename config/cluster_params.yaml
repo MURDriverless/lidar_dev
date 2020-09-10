@@ -24,8 +24,8 @@ clf_img_w: 32           # classifier input image width
 clf_img_h: 32           # calssifier input image height
 clf_max_batch: 50       # classifier input max batch size
 
-clf_onnx: "/model/lidar_cone_classifier.onnx" # path to classifier model [onnx]
-clf_trt: "/model/lidar_cone_classifier.trt"   # path to classifier model [trt]
+clf_onnx: "/models/lidar_cone_classifier.onnx" # path to classifier model [onnx]
+clf_trt: "/models/lidar_cone_classifier.trt"   # path to classifier model [trt]
 
 ## ------------------------------------------
 ## lidar intensity image crop data colleciton

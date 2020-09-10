@@ -7,9 +7,9 @@ ClusterDetector::ClusterDetector(
 {
     nh = n;
 
-    ground_sub.subscribe(nh, "ground_segmentation/obstacle_cloud", 1);
-    obstacles_sub.subscribe(nh, "ground_segmentation/ground_cloud", 1);
-    intensity_sub.subscribe(nh, "img_node/intensity_image", 1);
+    ground_sub.subscribe(nh, "/ground_segmentation/obstacle_cloud", 1);
+    obstacles_sub.subscribe(nh, "/ground_segmentation/ground_cloud", 1);
+    intensity_sub.subscribe(nh, "/img_node/intensity_image", 1);
     sync.reset(new Sync(mySyncPolicy(10), ground_sub, obstacles_sub, intensity_sub));
     sync->registerCallback(boost::bind(&ClusterDetector::cloud_cluster_cb, this, _1, _2, _3));
 
@@ -18,9 +18,16 @@ ClusterDetector::ClusterDetector(
     results_pub = nh.advertise<mur_common::cone_msg>("cone_messages", 1);
     intensity_image_pub = nh.advertise<sensor_msgs::Image>("lidar_crop_image", 1);
 
+    const std::string onnx_path = ros::package::getPath("lidar_dev") + params.clf_onnx;
+    const std::string trt_path = ros::package::getPath("lidar_dev") + params.clf_trt;
+
+    ROS_INFO("%s", onnx_path.c_str());
+    ROS_INFO("%s", trt_path.c_str());
+
+
     lidarImgClassifier_.reset(new LidarImgClassifier(
-        params.clf_onnx,
-        params.clf_trt,
+        onnx_path,
+        trt_path,
         params.clf_img_w,
         params.clf_img_h,
         params.clf_max_batch));

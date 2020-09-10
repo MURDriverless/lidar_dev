@@ -19,7 +19,7 @@
     </node>
 
     <!-- Perform clustering on ground segmentation outputs -->
-    <node pkg="lidar_dev" type="clusterNode" name="clusterNode" output="screen">
-        <rosparam command="load" file="$(find lidar_dev)/launch/cluster_params.yaml"/>
+    <node pkg="lidar_dev" type="cluster_node" name="cluster_node" output="screen">
+        <rosparam command="load" file="$(find lidar_dev)/config/cluster_params.yaml"/>
     </node>
 </launch>
