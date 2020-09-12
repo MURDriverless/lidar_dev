@@ -9,7 +9,7 @@
     <!-- Ground segmentation -->
     <!-- add `output="screen"` if printing stdout is required -->
     <node name="ground_segmentation" pkg="linefit_ground_segmentation_ros" type="ground_segmentation_node" output="screen">
-        <rosparam command="load" file="$(find linefit_ground_segmentation_ros)/launch/segmentation_params.yaml"/>
+        <rosparam command="load" file="$(find lidar_dev)/launch/segmentation_params.yaml"/>
 
         <!-- <param name="input_topic" value="/os1_cloud_node/points" /> -->
 
