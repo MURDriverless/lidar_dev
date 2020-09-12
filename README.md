@@ -75,4 +75,5 @@ References for TensorRT related implementation.
 - [x] Refector current codes
 - [ ] Test `carcrop_node` on indoor sensor data
 - [ ] Make a fork for the official `ouster_example` for the purpose of custom `img_node`
+- [ ] Sync raw point cloud and intensity image
 - [ ] Update readme with data collection instructions.
