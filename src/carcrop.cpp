@@ -8,6 +8,7 @@
 #include <pcl/point_types.h>
 #include <pcl/ModelCoefficients.h>
 #include <pcl/filters/crop_box.h>
+#include <pcl/filters/conditional_removal.h>
 
 ros::Publisher pub;
 double minX = 0;
@@ -25,13 +26,39 @@ double maxZ = 0;
  */
 void cloud_cb(const sensor_msgs::PointCloud2ConstPtr &cloud_msg)
 {
-	// Container for original & filtered data
-	pcl::PCLPointCloud2 *cloud = new pcl::PCLPointCloud2;
-	pcl::PCLPointCloud2ConstPtr cloudPtr(cloud);
-	pcl::PCLPointCloud2 cloud_filtered;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr input(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::fromROSMsg(*cloud_msg, *input);
 
-	// Convert given message into PCL data type
-	pcl_conversions::toPCL(*cloud_msg, *cloud);
+	// ! apply cylindrical filter on input cloud
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cylin_filtered(new pcl::PointCloud<pcl::PointXYZ>);
+
+	pcl::ConditionalRemoval<pcl::PointXYZ> condrem;
+	pcl::ConditionAnd<pcl::PointXYZ>::Ptr cyl_cond(new pcl::ConditionAnd<pcl::PointXYZ>());
+
+	Eigen::Matrix3f cylinderMatrix;
+	cylinderMatrix.setZero(3, 3);
+	cylinderMatrix(0, 0) = 1.0;
+	cylinderMatrix(1, 1) = 1.0;
+
+	Eigen::Vector3f cylinderPosition;
+	cylinderPosition << 0, 0, 0;
+
+	double radius = 2;
+	float cylinderScalar = -(radius * radius) + 1 + 1;
+
+	pcl::TfQuadraticXYZComparison<pcl::PointXYZ>::Ptr
+		cyl_comp(new pcl::TfQuadraticXYZComparison<pcl::PointXYZ>(
+			pcl::ComparisonOps::GE, cylinderMatrix, cylinderPosition, cylinderScalar));
+
+	cyl_cond->addComparison(cyl_comp);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr recovered(new pcl::PointCloud<pcl::PointXYZ>);
+
+	// build and apply filter
+	condrem.setCondition(cyl_cond);
+	condrem.setInputCloud(input);
+	condrem.setKeepOrganized(false);
+	condrem.filter(*cloud_filtered);
 
 	// Rotate 180 deg and flip
 	// ! when working in mursim the os1 lidar frame seems to be aligned with os1 sensor frame
@@ -45,16 +72,17 @@ void cloud_cb(const sensor_msgs::PointCloud2ConstPtr &cloud_msg)
 	double max_Z = maxZ;
 
 	// Perform crop box filtering
-	pcl::CropBox<pcl::PCLPointCloud2> box;
+	pcl::CropBox<pcl::PointXYZ> box;
 	box.setMin(Eigen::Vector4f(min_X, min_Y, min_Z, 1.0));
 	box.setMax(Eigen::Vector4f(max_X, max_Y, max_Z, 1.0));
-	box.setInputCloud(cloudPtr);
+	box.setInputCloud(cloud_filtered);
 	box.setNegative(true);
-	box.filter(cloud_filtered);
+	box.filter(*cylin_filtered);
 
 	// Convert to ROS data type
 	sensor_msgs::PointCloud2 output;
-	pcl_conversions::fromPCL(cloud_filtered, output);
+	pcl::toROSMsg(*cylin_filtered, output);
+	// pcl_conversions::fromPCL(cloud_filtered, output);
 
 	// Publish the output data
 	pub.publish(output);
