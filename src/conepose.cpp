@@ -133,6 +133,12 @@ class AddConeColour
         for (int i = 0; i < cones_lidar.size(); ++i)
         {
             std::string cone_colour = FindConeColour(cones_world[i], cone_link_poses, cone_link_names);
+
+            // temp fix, skip if cone colour cannot be determined
+            if (cone_colour == UNKNOWN_STR) {
+                continue;
+            }
+
             cone_msg.x.push_back(cones_lidar[i].x);
             cone_msg.y.push_back(cones_lidar[i].y);
             // cone_msg.x.push_back(cones_world[i].x);

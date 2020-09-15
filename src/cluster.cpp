@@ -487,7 +487,7 @@ void ClusterDetector::cloud_cluster_cb(
     cones_output.header.frame_id = input->header.frame_id;
     cones_output.header.stamp = obstacles_msg->header.stamp;
 
-    ROS_INFO("About to publish cluster output \n");
+    // ROS_INFO("About to publish cluster output \n");
 
     // publish the output data
     pub.publish(output);
@@ -498,7 +498,7 @@ void ClusterDetector::cloud_cluster_cb(
     // measure and print runtime performance
     end_ = ros::WallTime::now();
     double execution_time = (end_ - start_).toNSec() * 1e-6;
-    ROS_INFO_STREAM("Exectution time (ms): " << execution_time);
+    // ROS_INFO_STREAM("Exectution time (ms): " << execution_time);
 
 
     // ! display intensity image

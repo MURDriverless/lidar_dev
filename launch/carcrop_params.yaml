@@ -1,9 +1,9 @@
 # define box volume which encapsulate the car (set values in os1_sensor frame)
 # see devops wiki page 'LiDAR FoV Trimming' for more information
-minX: -3.0
+minX: -300
 maxX: 0.0
-minY: -1.0
-maxY: 1.0
-minZ: -3.0
-maxZ: 3.0
+minY: -300
+maxY: 300
+minZ: -100
+maxZ: 100
 input_topic: "os1_cloud_node/points"
