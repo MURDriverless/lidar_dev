@@ -13,8 +13,9 @@ include_directories(${GAZEBO_INCLUDE_DIRS})
 link_directories(${GAZEBO_LIBRARY_DIRS})
 # list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
 
-find_package(OpenCV REQUIRED)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DOPENCV")
+## OpenCV
+# find_package(OpenCV REQUIRED)
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DOPENCV")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -88,9 +89,6 @@ include_directories(
   ${TENSORRT_INCLUDE_DIR}
 )
 
-add_executable(segmentation_node src/segmentation.cpp)
-target_link_libraries(segmentation_node ${catkin_LIBRARIES})
-
 add_executable(boxcrop_node src/boxcrop.cpp)
 target_link_libraries(boxcrop_node ${catkin_LIBRARIES})
 
@@ -107,7 +105,6 @@ add_executable(p3d_tf_node src/p3d_tf.cpp)
 target_link_libraries(p3d_tf_node ${catkin_LIBRARIES})
 
 add_executable(cluster_node src/cluster.cpp)
-target_link_libraries(cluster_node ${catkin_LIBRARIES} ${OpenCV_LIBS})
-# target_link_libraries(cluster_node classifier ${catkin_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(cluster_node ${catkin_LIBRARIES})
 
 add_dependencies(cluster_node ${catkin_EXPORTED_TARGETS})
