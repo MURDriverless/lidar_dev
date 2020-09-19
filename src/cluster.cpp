@@ -247,8 +247,6 @@ void CloudToImage(
 
     // supprot for writing JPG
     std::vector<int> compression_params;
-    compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
-    compression_params.push_back(100);
 
     // ! will only work if directory exists
     // TODO: update code to create directory if not exist
