@@ -37,7 +37,7 @@
 #define BIG_STR "BIG"
 #define UNKNOWN_STR "na"
 
-#define TIMING
+// #define TIMING
 
 class AddConeColour
 {
@@ -81,16 +81,13 @@ class AddConeColour
             // (source_frame, target_frame) shifts point cloud to target_frame
             // but frame parent does not change
             // ! want to do some time travel here
-
-            ROS_INFO_STREAM("Time now");
-
             transform = tf_buffer_.lookupTransform(
                 target_frame,
                 source_frame,
                 msg->header.stamp,
                 ros::Duration(0.1));
-            // ? this should be in the past, not sure what TF2 is throwing warnings here
 
+            // this should be in the past, not sure what TF2 is throwing warnings here
             tf2::doTransform(*msg, cloud_out, transform);
         }
         catch (tf2::TransformException &ex)
@@ -104,54 +101,6 @@ class AddConeColour
         execution_time_ = (end_ - start_).toNSec() * 1e-6;
         ROS_INFO_STREAM("TF2 execution time (ms): " << execution_time_);
 #endif
-
-//         const std::string model_name = "track";
-//         std::vector<std::string> cone_link_names;   // orange_cone_xx, blue_cone_xx, big_cone_xx
-//         std::vector<pcl::PointXYZ> cone_link_poses; // store cone link positions
-
-//         ros::ServiceClient client = nh_.serviceClient<gazebo_msgs::GetModelProperties>("/gazebo/get_model_properties");
-//         gazebo_msgs::GetModelProperties gmp_srv;
-//         gmp_srv.request.model_name = model_name;
-
-// #ifdef TIMING
-//         start_ = ros::WallTime::now();
-// #endif
-
-//         if (client.call(gmp_srv))
-//         {
-//             cone_link_names = gmp_srv.response.body_names;
-//             for (auto const &cone : cone_link_names)
-//             {
-//                 client = nh_.serviceClient<gazebo_msgs::GetLinkState>("/gazebo/get_link_state");
-//                 gazebo_msgs::GetLinkState gls_srv;
-//                 gls_srv.request.link_name = model_name + "::" + cone;
-
-//                 if (client.call(gls_srv))
-//                 {
-//                     pcl::PointXYZ pos;
-//                     pos.x = gls_srv.response.link_state.pose.position.x;
-//                     pos.y = gls_srv.response.link_state.pose.position.y;
-//                     pos.z = gls_srv.response.link_state.pose.position.z;
-//                     cone_link_poses.push_back(pos);
-//                 }
-//                 else
-//                 {
-//                     ROS_ERROR("Failed to call service get link state");
-//                     return;
-//                 }
-//             }
-//         }
-//         else
-//         {
-//             ROS_ERROR("Failed to call servce get model properties");
-//             return;
-//         }
-
-// #ifdef TIMING
-//         end_ = ros::WallTime::now();
-//         execution_time_ = (end_ - start_).toNSec() * 1e-6;
-//         ROS_INFO_STREAM("World link_state execution time (ms): " << execution_time_);
-// #endif
 
         // By this point, we should have all the detected cones and ground truth in the same world frame.
         // Loop through the detected cones and build the required cone_msg
@@ -340,7 +289,9 @@ public:
                       model_name_("track")
     {
         // wait for gazebo to be ready
+        ROS_WARN_STREAM("LiDAR Simulation Cone Pose node waiting for 3 seconds for Gazebo to start up");
         ros::Duration(3.0).sleep();
+        ROS_WARN_STREAM("LIDAR Simulation Cone Pose node starting ...");
 
         // retrieve link name and link poses for given model
         ros::ServiceClient client = nh_.serviceClient<gazebo_msgs::GetModelProperties>("/gazebo/get_model_properties");
