@@ -37,6 +37,8 @@
 #define BIG_STR "BIG"
 #define UNKNOWN_STR "na"
 
+#define TIMING
+
 class AddConeColour
 {
     ros::NodeHandle nh_;
@@ -46,6 +48,15 @@ class AddConeColour
 
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf_listener_;
+
+    const std::string model_name_;
+    std::vector<std::string> cone_link_names;   // orange_cone_xx, blue_cone_xx, big_cone_xx
+    std::vector<pcl::PointXYZ> cone_link_poses; // store cone link positions
+
+#ifdef TIMING
+    ros::WallTime start_, end_;
+    double execution_time_;
+#endif
 
     /*
      * pointCloudCallback
@@ -59,6 +70,10 @@ class AddConeColour
         const std::string source_frame = msg->header.frame_id;
         sensor_msgs::PointCloud2 cloud_out;
 
+#ifdef TIMING
+        start_ = ros::WallTime::now();
+#endif
+
         try
         {
             // (target_frame, source_frame) preserves world coordinates but
@@ -66,10 +81,16 @@ class AddConeColour
             // (source_frame, target_frame) shifts point cloud to target_frame
             // but frame parent does not change
             // ! want to do some time travel here
+
+            ROS_INFO_STREAM("Time now");
+
             transform = tf_buffer_.lookupTransform(
                 target_frame,
                 source_frame,
-                msg->header.stamp);
+                msg->header.stamp,
+                ros::Duration(0.1));
+            // ? this should be in the past, not sure what TF2 is throwing warnings here
+
             tf2::doTransform(*msg, cloud_out, transform);
         }
         catch (tf2::TransformException &ex)
@@ -78,44 +99,59 @@ class AddConeColour
             return;
         }
 
-        const std::string model_name = "track";
-        std::vector<std::string> cone_link_names;   // orange_cone_xx, blue_cone_xx, big_cone_xx
-        std::vector<pcl::PointXYZ> cone_link_poses; // store cone link positions
+#ifdef TIMING
+        end_ = ros::WallTime::now();
+        execution_time_ = (end_ - start_).toNSec() * 1e-6;
+        ROS_INFO_STREAM("TF2 execution time (ms): " << execution_time_);
+#endif
 
-        ros::ServiceClient client = nh_.serviceClient<gazebo_msgs::GetModelProperties>("/gazebo/get_model_properties");
-        gazebo_msgs::GetModelProperties gmp_srv;
-        gmp_srv.request.model_name = model_name;
+//         const std::string model_name = "track";
+//         std::vector<std::string> cone_link_names;   // orange_cone_xx, blue_cone_xx, big_cone_xx
+//         std::vector<pcl::PointXYZ> cone_link_poses; // store cone link positions
 
-        if (client.call(gmp_srv))
-        {
-            cone_link_names = gmp_srv.response.body_names;
+//         ros::ServiceClient client = nh_.serviceClient<gazebo_msgs::GetModelProperties>("/gazebo/get_model_properties");
+//         gazebo_msgs::GetModelProperties gmp_srv;
+//         gmp_srv.request.model_name = model_name;
 
-            for (auto const &cone : cone_link_names)
-            {
-                client = nh_.serviceClient<gazebo_msgs::GetLinkState>("/gazebo/get_link_state");
-                gazebo_msgs::GetLinkState gls_srv;
-                gls_srv.request.link_name = model_name + "::" + cone;
+// #ifdef TIMING
+//         start_ = ros::WallTime::now();
+// #endif
 
-                if (client.call(gls_srv))
-                {
-                    pcl::PointXYZ pos;
-                    pos.x = gls_srv.response.link_state.pose.position.x;
-                    pos.y = gls_srv.response.link_state.pose.position.y;
-                    pos.z = gls_srv.response.link_state.pose.position.z;
-                    cone_link_poses.push_back(pos);
-                }
-                else
-                {
-                    ROS_ERROR("Failed to call service get link state");
-                    return;
-                }
-            }
-        }
-        else
-        {
-            ROS_ERROR("Failed to call servce get model properties");
-            return;
-        }
+//         if (client.call(gmp_srv))
+//         {
+//             cone_link_names = gmp_srv.response.body_names;
+//             for (auto const &cone : cone_link_names)
+//             {
+//                 client = nh_.serviceClient<gazebo_msgs::GetLinkState>("/gazebo/get_link_state");
+//                 gazebo_msgs::GetLinkState gls_srv;
+//                 gls_srv.request.link_name = model_name + "::" + cone;
+
+//                 if (client.call(gls_srv))
+//                 {
+//                     pcl::PointXYZ pos;
+//                     pos.x = gls_srv.response.link_state.pose.position.x;
+//                     pos.y = gls_srv.response.link_state.pose.position.y;
+//                     pos.z = gls_srv.response.link_state.pose.position.z;
+//                     cone_link_poses.push_back(pos);
+//                 }
+//                 else
+//                 {
+//                     ROS_ERROR("Failed to call service get link state");
+//                     return;
+//                 }
+//             }
+//         }
+//         else
+//         {
+//             ROS_ERROR("Failed to call servce get model properties");
+//             return;
+//         }
+
+// #ifdef TIMING
+//         end_ = ros::WallTime::now();
+//         execution_time_ = (end_ - start_).toNSec() * 1e-6;
+//         ROS_INFO_STREAM("World link_state execution time (ms): " << execution_time_);
+// #endif
 
         // By this point, we should have all the detected cones and ground truth in the same world frame.
         // Loop through the detected cones and build the required cone_msg
@@ -130,12 +166,17 @@ class AddConeColour
         visualization_msgs::MarkerArray marker_array_msg;
         marker_array_msg.markers.resize(cones_lidar.size());
 
+#ifdef TIMING
+        start_ = ros::WallTime::now();
+#endif
+
         for (int i = 0; i < cones_lidar.size(); ++i)
         {
             std::string cone_colour = FindConeColour(cones_world[i], cone_link_poses, cone_link_names);
 
             // temp fix, skip if cone colour cannot be determined
-            if (cone_colour == UNKNOWN_STR) {
+            if (cone_colour == UNKNOWN_STR)
+            {
                 continue;
             }
 
@@ -153,6 +194,13 @@ class AddConeColour
                 cone_colour,
                 msg->header.frame_id);
         }
+
+#ifdef TIMING
+        end_ = ros::WallTime::now();
+        execution_time_ = (end_ - start_).toNSec() * 1e-6;
+        ROS_INFO_STREAM("Find colour loop execution time (ms): " << execution_time_);
+#endif
+
         cone_msg.frame_id = msg->header.frame_id;
 
         pub_.publish(cone_msg);
@@ -287,10 +335,48 @@ class AddConeColour
     }
 
 public:
-    AddConeColour() :
-        tf_listener_(tf_buffer_),
-        nh_("~")
+    AddConeColour() : tf_listener_(tf_buffer_),
+                      nh_("~"),
+                      model_name_("track")
     {
+        // wait for gazebo to be ready
+        ros::Duration(3.0).sleep();
+
+        // retrieve link name and link poses for given model
+        ros::ServiceClient client = nh_.serviceClient<gazebo_msgs::GetModelProperties>("/gazebo/get_model_properties");
+        gazebo_msgs::GetModelProperties gmp_srv;
+        gmp_srv.request.model_name = model_name_;
+
+        if (client.call(gmp_srv))
+        {
+            cone_link_names = gmp_srv.response.body_names;
+            for (auto const &cone : cone_link_names)
+            {
+                client = nh_.serviceClient<gazebo_msgs::GetLinkState>("/gazebo/get_link_state");
+                gazebo_msgs::GetLinkState gls_srv;
+                gls_srv.request.link_name = model_name_ + "::" + cone;
+
+                if (client.call(gls_srv))
+                {
+                    pcl::PointXYZ pos;
+                    pos.x = gls_srv.response.link_state.pose.position.x;
+                    pos.y = gls_srv.response.link_state.pose.position.y;
+                    pos.z = gls_srv.response.link_state.pose.position.z;
+                    cone_link_poses.push_back(pos);
+                }
+                else
+                {
+                    ROS_ERROR("Failed to call service get link state");
+                    return;
+                }
+            }
+        }
+        else
+        {
+            ROS_ERROR("Failed to call servce get model properties");
+            return;
+        }
+
         sub_ = nh_.subscribe("/cluster/lidar_cone_centres", 1, &AddConeColour::pointCloudCallback, this);
         pub_ = nh_.advertise<mur_common::cone_msg>("cone_messages_sim", 1);
         markers_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("cone_markers_sim", 1);

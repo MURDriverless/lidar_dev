@@ -12,14 +12,26 @@
 #include <geometry_msgs/TransformStamped.h>
 #include <nav_msgs/Odometry.h>
 
+// #define TIMING
+
 class P3dToTf
 {
     ros::NodeHandle nh_;
     ros::Subscriber sub_;
     ros::Publisher pub_;
 
+#ifdef TIMING
+    ros::WallTime start_;
+    ros::WallTime end_;
+#endif
+
     void p3dCallback(const nav_msgs::OdometryConstPtr &odom)
     {
+
+#ifdef TIMING
+        start_ = ros::WallTime::now();
+#endif
+
         static tf2_ros::TransformBroadcaster br;
         geometry_msgs::TransformStamped transformStamped;
 
@@ -37,6 +49,13 @@ class P3dToTf
         transformStamped.transform.rotation.w = odom->pose.pose.orientation.w;
 
         br.sendTransform(transformStamped);
+
+#ifdef TIMING
+        end_ = ros::WallTime::now();
+        double execution_time = (end_ - start_).toNSec() * 1e-6;
+        ROS_INFO_STREAM("p3d_to_tf execution time (ms): " << execution_time);
+#endif
+
     }
 
 public:
