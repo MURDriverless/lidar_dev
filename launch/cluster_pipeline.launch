@@ -14,11 +14,9 @@
         <!-- <param name="input_topic" value="/os1_cloud_node/points" /> -->
 
         <!-- Enable if using boxcrop -->
-        <param name="input_topic" value="/carcrop_output" />
-
+        <param name="input_topic" value="/mur/lidar/carcrop_output" />
         <param name="ground_output_topic" value="ground_cloud" />
         <param name="obstacle_output_topic" value="obstacle_cloud" />
-
         <param name="visualize" value="false" />
     </node>
 

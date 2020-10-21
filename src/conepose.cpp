@@ -289,8 +289,8 @@ public:
                       model_name_("track")
     {
         // wait for gazebo to be ready
-        ROS_WARN_STREAM("LiDAR Simulation Cone Pose node waiting for 3 seconds for Gazebo to start up");
-        ros::Duration(3.0).sleep();
+        ROS_WARN_STREAM("LiDAR Simulation Cone Pose node waiting for 1.5 seconds for Gazebo to start up");
+        ros::Duration(1.5).sleep();
         ROS_WARN_STREAM("LIDAR Simulation Cone Pose node starting ...");
 
         // retrieve link name and link poses for given model
