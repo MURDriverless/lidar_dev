@@ -189,7 +189,7 @@ class AddConeColour
 
         if (idx == -1)
         {
-            ROS_INFO("FindConeColour idx is -1");
+            // ROS_INFO("FindConeColour idx is -1");
             return UNKNOWN_STR;
         }
 

@@ -36,6 +36,9 @@
 #include <pcl/filters/filter.h>
 
 // #include "lidarImgClassifier.h"
+#include "mur_common/diagnostic_msg.h"
+
+#define HEALTH_TOPIC "/mur/lidar/cluster_health"
 
 struct ClusterParams
 {
@@ -130,6 +133,8 @@ private:
     // int clfImgW;
     // int clfImgH;
     // int maxBatch;
+
+    void push_health(uint64_t logic_start, uint64_t lidar_start);
 };
 
 #endif // CLUSTER_H_

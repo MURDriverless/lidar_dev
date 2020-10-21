@@ -1,11 +1,13 @@
 #include "cluster.h"
 #include <mur_common/cone_msg.h>
+#include <mur_common/timing_msg.h>
 
 ros::Publisher pub;                 // publisher for all reconstructed cluster clouds
 ros::Publisher markers_pub;         // publisher for cylinder markers
 ros::Publisher cones_pub;           // publisher for cones point cloud
 ros::Publisher results_pub;         // publisher for cone_msg
 ros::Publisher intensity_image_pub; // publisher for intensity images
+ros::Publisher health_pub;          // publisher for timing info
 
 ClusterParams params;
 
@@ -421,7 +423,8 @@ void ClusterDetector::cloud_cluster_cb(
         // img_crops.push_back(crop);
 
         // join each cloud cluster into one combined cluster (visualisation)
-        *clustered_cloud += *recovered;
+        *clustered_cloud += *cloud_cluster;
+        // *clustered_cloud += *recovered;
 
         // DEBUG: print info about cluster size
         // std::cout << " PointCloud representing the Cluster: " << cloud_cluster->points.size() << " data points." << std::endl;
@@ -485,8 +488,6 @@ void ClusterDetector::cloud_cluster_cb(
     cones_output.header.frame_id = input->header.frame_id;
     cones_output.header.stamp = obstacles_msg->header.stamp;
 
-    // ROS_INFO("About to publish cluster output \n");
-
     // publish the output data
     pub.publish(output);
     markers_pub.publish(marker_array_msg);
@@ -495,13 +496,33 @@ void ClusterDetector::cloud_cluster_cb(
 
     // measure and print runtime performance
     end_ = ros::WallTime::now();
-    double execution_time = (end_ - start_).toNSec() * 1e-6;
+    float execution_time = (end_ - start_).toNSec() * 1e-6;
     // ROS_INFO_STREAM("Exectution time (ms): " << execution_time);
 
 
-    // ! display intensity image
+    // ! publish timing / diagnostic info
+    push_health(start_.toNSec(), obstacles_msg->header.stamp.toNSec());
+
+    // display intensity image
     // cv::imshow("view", intensity_cv_ptr->image);
     // cv::waitKey(30);
+}
+
+void ClusterDetector::push_health(uint64_t logic_start, uint64_t lidar_start)
+{
+    mur_common::timing_msg h;
+
+    uint64_t wall_current = ros::WallTime::now().toNSec();
+    uint64_t current = ros::Time::now().toNSec();
+
+    float logic_time = (wall_current - logic_start) * 1e-6;
+    float lidar_time = (current - lidar_start) * 1e-6;
+
+    h.compute_time = logic_time;
+    h.full_compute_time = lidar_time;
+    h.header.stamp = ros::Time::now();
+    
+    health_pub.publish(h);
 }
 
 /**
@@ -606,11 +627,14 @@ int main(int argc, char **argv)
     sync.registerCallback(boost::bind(&ClusterDetector::cloud_cluster_cb, &clusterDetector, _1, _2));
 
     // Create a ROS publisher for the output point cloud
+    // TODO: refactor to have the same style as planner_exploratory
     pub = nh.advertise<sensor_msgs::PointCloud2>("cluster_output", 1);
     markers_pub = nh.advertise<visualization_msgs::MarkerArray>("cluster_markers", 1);
     results_pub = nh.advertise<mur_common::cone_msg>("cone_messages", 1);
     cones_pub = nh.advertise<sensor_msgs::PointCloud2>("lidar_cone_centres", 1);
     // intensity_image_pub = nh.advertise<sensor_msgs::Image>("lidar_crop_image", 1);
+
+    health_pub = nh.advertise<mur_common::timing_msg>(HEALTH_TOPIC, 1);
 
     // Spin
     // ros::Duration(0.1).sleep();
