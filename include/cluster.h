@@ -37,6 +37,9 @@
 
 #include "classifier.h"
 
+#define CLUSTER_HEALTH_TOPIC "/mur/lidar/cluster_health"
+#define CLASSIFIER_HEALTH_TOPIC "/mur/lidar/classifier_health"
+
 struct ClusterParams
 {
     ClusterParams() : cluster_tol(0.08),
@@ -116,6 +119,8 @@ private:
     ros::Publisher markers_pub;
     ros::Publisher results_pub;
     ros::Publisher intensity_image_pub;
+    ros::Publisher cluster_health_pub;
+    ros::Publisher classifier_health_pub;
 
     ClusterParams params;
 
@@ -140,6 +145,8 @@ private:
         const int &cone_count,
         const std::string &cone_colour);
     std::unique_ptr<LidarImgClassifier> lidarImgClassifier_;
+
+    void push_health(uint64_t cluster_s, uint64_t cluster_e, uint64_t clf_s, uint64_t clf_e, uint64_t lidar_s);
 };
 
 #endif // CLUSTER_H_

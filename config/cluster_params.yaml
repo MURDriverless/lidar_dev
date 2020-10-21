@@ -3,8 +3,8 @@ cluster_min: 10         # cluster minimum number of points
 cluster_max: 350        # cluster maximum nubmer of points
 reconst_radius: 0.13    # radius of the cluster reconstruction
 
-marker_sx: 0.30         # marker scale x
-marker_sy: 0.30         # marker scale y
+marker_sx: 0.27         # marker scale x
+marker_sy: 0.27         # marker scale y
 marker_sz: 0.7          # marker scale z
 marker_alpha: 0.4       # alpha value of marker
 marker_r: 0.0           # red
