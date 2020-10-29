@@ -33,19 +33,19 @@ YELLOW = 'Yellow'
 # c_truth = ['Blue', 'Blue', 'Yellow', 'Yellow']
 
 # ground truth for 2m 4m all
-x_truth = [2, 4, 2, 4]
-y_truth = [-1.5, -1.5, 1.5, 1.5]
-c_truth = ['Blue', 'Blue', 'Yellow', 'Yellow']
-
-# x_truth = [3, 5, 3, 5]
+# x_truth = [2, 4, 2, 4]
 # y_truth = [-1.5, -1.5, 1.5, 1.5]
 # c_truth = ['Blue', 'Blue', 'Yellow', 'Yellow']
 
+x_truth = [3, 5, 3, 5]
+y_truth = [-1.5, -1.5, 1.5, 1.5]
+c_truth = ['Blue', 'Blue', 'Yellow', 'Yellow']
+
 class analysis:
-    def __init__(self):
+    def __init__(self)]:
         # open rosbag from specified location
         # self.bag = rosbag.Bag(os.path.expanduser('~/bagfiles/lidar_bench_test_all_topics.bag'))
-        self.bag = rosbag.Bag(os.path.expanduser('~/bagfiles/os1_2m_4m_all.bag'))
+        self.bag = rosbag.Bag(os.path.expanduser('~/bagfiles/os1_3m_5m_all.bag'))
         self.topic = '/cluster_node/cone_messages'
         self.column_names = ['x', 'y', 'colour']
         self.scatter_marker_sz = 50
@@ -147,34 +147,126 @@ class analysis:
         self.parse_ground_truths()
         n_total = 0
         n_correct = 0
+
+        TP = 0
+        TN = 0
+        FP = 0
+        FN = 0
         
         # lets try to benchmark for the blue cone first
         for topic, msg, t in self.bag.read_messages(topics=self.topic):
             x = -np.asarray(msg.x)
             y = -np.asarray(msg.y)
             c = msg.colour
-            
-            for idx, val in enumerate(c):
+
+            for idx_t, val_t in enumerate(c_truth):
                 # first lets locate the corresponding ground truth
                 min_dist = float('inf')
-                gt_index = -1
-                for idx_t, val_t in enumerate(c_truth):
+                est_index = -1
+                for idx, val in enumerate(c):
                     dist = self.euclidean_dist( (x[idx], y[idx]), (x_truth[idx_t], y_truth[idx_t]) )
                     if dist < min_dist:
                         min_dist = dist
-                        gt_index = idx_t
+                        est_index = idx
+
                 # check estimated colour with ground truth colour
                 n_total += 1
-                if c[idx] == c_truth[gt_index] and min_dist < 0.5:
-                    n_correct += 1
+                if min_dist < 0.5:
+                    # ! debug print
+                    # print(c[est_index], c_truth[idx_t])
+                    # blue, yellow
+
+                    if c[est_index] == c_truth[idx_t]:
+                        n_correct += 1
+                    if c[est_index] == BLUE and c_truth[idx_t] == BLUE:
+                        TP += 1
+                    if c[est_index] == BLUE and c_truth[idx_t] == YELLOW:
+                        FP += 1
+                    if c[est_index] == YELLOW and c_truth[idx_t] == YELLOW:
+                        TN += 1
+                    if c[est_index] == YELLOW and c_truth[idx_t] == BLUE:
+                        FN += 1
         
         # print results
         accuracy = float(n_correct) / n_total
+        precision = float(TP) / (TP + FP)
+        recall = float(TP) / (TP + FN)
+
         print(n_correct)
         print(n_total)
+        print('TP = ', TP)
+        print('FP = ', FP)
+        print('TN = ', TN)
+        print('FN = ', FN)
         print("LiDAR classifier accuracy = ", accuracy)
+        print("Precision = ", precision)
+        print("Recall = ", recall)
 
-    
+    def compute_precision_recall_yellow(self):
+        """
+        Compute precision and recall for LiDAR intensity image classifier
+        This is for the yellow cone class.
+        """
+
+        self.parse_ground_truths()
+        n_total = 0
+        n_correct = 0
+
+        TP = 0
+        TN = 0
+        FP = 0
+        FN = 0
+        
+        # lets try to benchmark for the blue cone first
+        for topic, msg, t in self.bag.read_messages(topics=self.topic):
+            x = -np.asarray(msg.x)
+            y = -np.asarray(msg.y)
+            c = msg.colour
+
+            for idx_t, val_t in enumerate(c_truth):
+                # first lets locate the corresponding ground truth
+                min_dist = float('inf')
+                est_index = -1
+                for idx, val in enumerate(c):
+                    dist = self.euclidean_dist( (x[idx], y[idx]), (x_truth[idx_t], y_truth[idx_t]) )
+                    if dist < min_dist:
+                        min_dist = dist
+                        est_index = idx
+
+                # check estimated colour with ground truth colour
+                n_total += 1
+                if min_dist < 0.5:
+                    # ! debug print
+                    # print(c[est_index], c_truth[idx_t])
+                    # blue, yellow
+
+                    if c[est_index] == c_truth[idx_t]:
+                        n_correct += 1
+
+                    if c[est_index] == YELLOW and c_truth[idx_t] == YELLOW:
+                        TP += 1
+                    if c[est_index] == YELLOW and c_truth[idx_t] == BLUE:
+                        FP += 1
+                    if c[est_index] == BLUE and c_truth[idx_t] == BLUE:
+                        TN += 1
+                    if c[est_index] == BLUE and c_truth[idx_t] == YELLOW:
+                        FN += 1
+        
+        # print results
+        accuracy = float(n_correct) / n_total
+        precision = float(TP) / (TP + FP)
+        recall = float(TP) / (TP + FN)
+
+        print(n_correct)
+        print(n_total)
+        print('TP = ', TP)
+        print('FP = ', FP)
+        print('TN = ', TN)
+        print('FN = ', FN)
+        print("LiDAR classifier accuracy = ", accuracy)
+        print("Precision = ", precision)
+        print("Recall = ", recall)
+
     def plot_single_instant(self):
         """
         Generates a PDF plot for an instant of the rosbag
@@ -229,5 +321,7 @@ class analysis:
 
 if __name__ == "__main__":
     analyse = analysis()
-    analyse.plot_single_instant()
-    # analyse.compute_precision_recall()
+    # analyse.plot_single_instant()
+    analyse.compute_precision_recall()
+    print('************************************************************')
+    analyse.compute_precision_recall_yellow()
