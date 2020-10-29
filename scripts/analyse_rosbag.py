@@ -6,6 +6,10 @@ It is assumed that all relevant LiDAR topics are recorded.
 
 References:
 https://answers.ros.org/question/55037/is-there-a-way-to-save-all-rosbag-data-into-a-csv-or-text-file/
+
+Usage:
+    python analyse_rosbag.py
+    (remember to update the parameters below)
 '''
 
 import rosbag
@@ -24,14 +28,24 @@ BLUE = 'Blue'
 YELLOW = 'Yellow'
 
 # ground truth info
-x_truth = [1.7, 1.8, 1.9, 2.1]
-y_truth = [-0.1, -0.4, 0.2, 0.5]
+# x_truth = [1.7, 1.8, 1.9, 2.1]
+# y_truth = [-0.1, -0.4, 0.2, 0.5]
+# c_truth = ['Blue', 'Blue', 'Yellow', 'Yellow']
+
+# ground truth for 2m 4m all
+x_truth = [2, 4, 2, 4]
+y_truth = [-1.5, -1.5, 1.5, 1.5]
 c_truth = ['Blue', 'Blue', 'Yellow', 'Yellow']
+
+# x_truth = [3, 5, 3, 5]
+# y_truth = [-1.5, -1.5, 1.5, 1.5]
+# c_truth = ['Blue', 'Blue', 'Yellow', 'Yellow']
 
 class analysis:
     def __init__(self):
         # open rosbag from specified location
-        self.bag = rosbag.Bag(os.path.expanduser('~/bagfiles/lidar_bench_test_all_topics.bag'))
+        # self.bag = rosbag.Bag(os.path.expanduser('~/bagfiles/lidar_bench_test_all_topics.bag'))
+        self.bag = rosbag.Bag(os.path.expanduser('~/bagfiles/os1_2m_4m_all.bag'))
         self.topic = '/cluster_node/cone_messages'
         self.column_names = ['x', 'y', 'colour']
         self.scatter_marker_sz = 50
@@ -151,7 +165,7 @@ class analysis:
                         gt_index = idx_t
                 # check estimated colour with ground truth colour
                 n_total += 1
-                if c[idx] == c_truth[gt_index]:
+                if c[idx] == c_truth[gt_index] and min_dist < 0.5:
                     n_correct += 1
         
         # print results
@@ -182,8 +196,8 @@ class analysis:
         axes = plt.gca()
         fig = plt.gcf()
 
-        plt.xlim(-1, 3)
-        plt.ylim(-1.5, 1.5)
+        plt.xlim(-1, 5)
+        plt.ylim(-3, 3)
 
         plt.xlabel("X position (m)")
         plt.ylabel("Y position (m)")
@@ -215,5 +229,5 @@ class analysis:
 
 if __name__ == "__main__":
     analyse = analysis()
-    # analyse.plot_single_instant()
-    analyse.compute_precision_recall()
+    analyse.plot_single_instant()
+    # analyse.compute_precision_recall()
