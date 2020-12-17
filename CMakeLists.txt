@@ -80,6 +80,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${OPENCV_INCLUDE_DIRS}
   ${TENSORRT_INCLUDE_DIR}
+  ${CUDA_INCLUDE_DIRS}
 )
 
 add_executable(boxcrop_node src/boxcrop.cpp)
